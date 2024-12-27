@@ -21,6 +21,12 @@ A dynamic hub where incoming webhooks brew, process, and transform seamlessly.
 - `direnv`
 - `pre-commit`
 
+@wip
+
+### Environment Variables
+
+@wip
+
 ---
 
 ## Installation
@@ -35,3 +41,25 @@ A dynamic hub where incoming webhooks brew, process, and transform seamlessly.
 
 ---
 
+## Docker
+
+@wip
+
+---
+
+## Rake Tasks
+
+@wip
+
+---
+
+## License
+
+This project is licensed under MIT
+
+---
+
+This project is intended to be a safe, welcoming space for collaboration, and
+contributors are expected to adhere to the [code of conduct][coc].
+
+[coc]: https://github.com/devchain-network/cauldron/blob/main/CODE_OF_CONDUCT.md
