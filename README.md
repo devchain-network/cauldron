@@ -1,4 +1,5 @@
 ![Version](https://img.shields.io/badge/version-0.0.0-orange.svg)
+![Go](https://img.shields.io/github/go-mod/go-version/devchain-network/cauldron)
 [![codecov](https://codecov.io/github/devchain-network/cauldron/graph/badge.svg?token=LAUHZBW12F)](https://codecov.io/github/devchain-network/cauldron)
 
 

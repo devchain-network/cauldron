@@ -13,8 +13,10 @@
 **/.bumpversion.toml
 **/.tm_properties
 **/Gemfile
+**/Gemfile.lock
 **/Rakefile
 **/.golangci.yml
+**/rubocop.yml
 **/CODE_OF_CONDUCT.md
 **/CONTRIBUTING.md
 **/SECURITY.md
