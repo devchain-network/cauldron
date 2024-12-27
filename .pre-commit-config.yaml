@@ -1,0 +1,11 @@
+repos:
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: golangci-lint
+      - id: go-mod-tidy
+
+  - repo: https://github.com/rubocop-hq/rubocop
+    rev: v1.69.2
+    hooks:
+      - id: rubocop

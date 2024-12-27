@@ -1,0 +1,33 @@
+AllCops:
+  Exclude:
+    - 'node_modules/**/*'
+    - 'tmp/**/*'
+    - '.git/**/*'
+    - 'bin/**/*'
+    - 'vendor/**/*'
+  NewCops: enable
+
+Layout/EmptyLines:
+  Enabled: false
+
+Layout/EmptyLinesAroundBlockBody:
+  Enabled: false
+
+Style/PercentLiteralDelimiters:
+  PreferredDelimiters:
+    '%': '{}'
+
+Style/TrailingCommaInHashLiteral:
+  Enabled: false
+
+Style/TrailingCommaInArguments:
+  Enabled: false
+
+Metrics/BlockLength:
+  Enabled: false
+
+Metrics/MethodLength:
+  Max: 20
+
+Style/TrailingCommaInArrayLiteral:
+  Enabled: false

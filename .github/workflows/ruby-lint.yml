@@ -1,0 +1,34 @@
+name: Run rubocop ruby linter
+
+on:
+  pull_request:
+    paths:
+      - '**.rb'
+      - 'Rakefile'
+  push:
+    branches:
+      - main
+    paths:
+      - '**.rb'
+      - 'Rakefile'
+
+concurrency:
+  group: rubocop-cauldron-lint
+  cancel-in-progress: true
+
+jobs:
+  rubocop:
+    name: Run rubocop linter
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Install RuboCop
+        run: gem install rubocop
+
+      - name: Run rubocop
+        run: rubocop
