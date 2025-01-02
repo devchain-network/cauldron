@@ -32,7 +32,7 @@ build-iPhoneSimulator/
 /doc/
 /rdoc/
 /.bundle/
-/vendor/bundle
+/ruby-vendor/
 /lib/bundler/man/
 .rvmrc
 

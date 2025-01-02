@@ -14,6 +14,7 @@
 **/.tm_properties
 **/Gemfile
 **/Gemfile.lock
+**/ruby-vendor
 **/Rakefile
 **/.golangci.yml
 **/rubocop.yml

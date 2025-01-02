@@ -28,6 +28,11 @@ Example `.envrc`
 export PATH="bin:${PATH}"
 ```
 
+```bash
+bundle config set --local path 'ruby-vendor/bundle' --local bin 'bin'
+bundle
+```
+
 @wip
 
 
