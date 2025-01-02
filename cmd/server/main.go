@@ -1,7 +1,13 @@
 package main
 
-import "fmt"
+import (
+	"log"
+
+	"github.com/devchain-network/cauldron/internal/apiserver"
+)
 
 func main() {
-	fmt.Println("Hello World")
+	if err := apiserver.Run(); err != nil {
+		log.Fatal(err)
+	}
 }

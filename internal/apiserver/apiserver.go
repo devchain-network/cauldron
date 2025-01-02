@@ -1,12 +1,25 @@
 package apiserver
 
 import (
+	"context"
 	"fmt"
-	"io"
 	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
+	"github.com/devchain-network/cauldron/internal/cerrors"
+	"github.com/devchain-network/cauldron/internal/slogger"
 	"github.com/valyala/fasthttp"
+)
+
+// constants.
+const (
+	serverDefaultReadTimeout  = 5 * time.Second
+	serverDefaultWriteTimeout = 10 * time.Second
+	serverDefaultIdleTimeout  = 15 * time.Second
+	serverDefaultListenAddr   = ":8000"
 )
 
 // HTTPServer ...
@@ -16,6 +29,91 @@ type HTTPServer interface {
 }
 
 var _ HTTPServer = (*Server)(nil) // compile time proof
+
+// Option ...
+type Option func(*Server) error
+
+// WithLogger sets logger.
+func WithLogger(l *slog.Logger) Option {
+	return func(server *Server) error {
+		if l == nil {
+			return fmt.Errorf("logger error: [%w]", cerrors.ErrValueRequired)
+		}
+		server.Logger = l
+
+		return nil
+	}
+}
+
+// // WithFastHTTP sets fast http server value.
+// func WithFastHTTP(f *fasthttp.Server) Option {
+// 	return func(server *Server) error {
+// 		if f == nil {
+// 			return fmt.Errorf("fast http error: [%w]", ErrValueRequired)
+// 		}
+// 		server.FastHTTP = f
+//
+// 		return nil
+// 	}
+// }
+
+// WithHTTPHandler adds http handler.
+func WithHTTPHandler(path string, handler fasthttp.RequestHandler) Option {
+	return func(server *Server) error {
+		if path == "" {
+			return fmt.Errorf("path error: [%w]", cerrors.ErrValueRequired)
+		}
+		if handler == nil {
+			return fmt.Errorf("http handler error: [%w]", cerrors.ErrValueRequired)
+		}
+
+		if server.Handlers == nil {
+			server.Handlers = make(map[string]fasthttp.RequestHandler)
+		}
+		server.Handlers[path] = handler
+
+		return nil
+	}
+}
+
+// WithListenAddr sets listen addr.
+func WithListenAddr(addr string) Option {
+	return func(server *Server) error {
+		if addr == "" {
+			return fmt.Errorf("listen addr error: [%w]", cerrors.ErrValueRequired)
+		}
+		server.ListenAddr = addr
+
+		return nil
+	}
+}
+
+// WithReadTimeout sets read timeout.
+func WithReadTimeout(d time.Duration) Option {
+	return func(server *Server) error {
+		server.ReadTimeout = d
+
+		return nil
+	}
+}
+
+// WithWriteTimeout sets write timeout.
+func WithWriteTimeout(d time.Duration) Option {
+	return func(server *Server) error {
+		server.WriteTimeout = d
+
+		return nil
+	}
+}
+
+// WithIdleTimeout sets idle timeout.
+func WithIdleTimeout(d time.Duration) Option {
+	return func(server *Server) error {
+		server.IdleTimeout = d
+
+		return nil
+	}
+}
 
 // Server ...
 type Server struct {
@@ -30,12 +128,112 @@ type Server struct {
 
 // Start ...
 func (s *Server) Start() error {
-	fmt.Fprintln(io.Discard, s)
-	panic("not implemented")
+	s.Logger.Info("start listening at", "addr", s.ListenAddr)
+	if err := s.FastHTTP.ListenAndServe(s.ListenAddr); err != nil {
+		return fmt.Errorf("listen and server error: [%w]", err)
+	}
+
+	return nil
 }
 
 // Stop ...
 func (s *Server) Stop() error {
-	fmt.Fprintln(io.Discard, s)
-	panic("not implemented")
+	s.Logger.Info("shutting down the server")
+	if err := s.FastHTTP.ShutdownWithContext(context.Background()); err != nil {
+		s.Logger.Error("server shutdown error", "error", err)
+
+		return fmt.Errorf("server shutdown error: [%w]", err)
+	}
+
+	return nil
+}
+
+// New instantiates new api server.
+func New(options ...Option) (*Server, error) {
+	server := new(Server)
+	server.ReadTimeout = serverDefaultReadTimeout
+	server.WriteTimeout = serverDefaultWriteTimeout
+	server.IdleTimeout = serverDefaultIdleTimeout
+	server.ListenAddr = serverDefaultListenAddr
+
+	for _, option := range options {
+		if err := option(server); err != nil {
+			return nil, fmt.Errorf("option error: [%w]", err)
+		}
+	}
+
+	if server.Logger == nil {
+		return nil, fmt.Errorf("logger error: [%w]", cerrors.ErrValueRequired)
+	}
+
+	if server.Handlers == nil {
+		return nil, fmt.Errorf("http handlers error: [%w]", cerrors.ErrValueRequired)
+	}
+
+	httpRouter := func(ctx *fasthttp.RequestCtx) {
+		handler, ok := server.Handlers[string(ctx.Path())]
+		if !ok {
+			ctx.NotFound()
+
+			return
+		}
+
+		handler(ctx)
+	}
+
+	fastHTTPServer := &fasthttp.Server{
+		Handler:         httpRouter,
+		ReadTimeout:     server.ReadTimeout,
+		WriteTimeout:    server.WriteTimeout,
+		IdleTimeout:     server.IdleTimeout,
+		CloseOnShutdown: true,
+	}
+
+	server.FastHTTP = fastHTTPServer
+
+	return server, nil
+}
+
+// Run runs the server.
+func Run() error {
+	logger, err := slogger.New()
+	if err != nil {
+		return fmt.Errorf("run error, logger: [%w]", err)
+	}
+
+	server, err := New(
+		WithLogger(logger),
+		WithHTTPHandler("/healthz", healthCheckHandler),
+	)
+	if err != nil {
+		return fmt.Errorf("run error, server: [%w]", err)
+	}
+
+	ch := make(chan struct{})
+
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+		<-sig
+
+		logger.Info("shutting down the server")
+		if err = server.Stop(); err != nil {
+			logger.Error("server stop error: [%w]", "error", err)
+		}
+		close(ch)
+	}()
+
+	if err = server.Start(); err != nil {
+		return fmt.Errorf("run error, server start: [%w]", err)
+	}
+
+	<-ch
+	logger.Info("all clear, goodbye")
+
+	return nil
+}
+
+func healthCheckHandler(ctx *fasthttp.RequestCtx) {
+	ctx.SetStatusCode(fasthttp.StatusOK)
+	ctx.SetBodyString("OK")
 }
