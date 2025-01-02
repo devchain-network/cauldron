@@ -22,7 +22,14 @@ A dynamic hub where incoming webhooks brew, process, and transform seamlessly.
 - `direnv`
 - `pre-commit`
 
+Example `.envrc`
+
+```bash
+export PATH="bin:${PATH}"
+```
+
 @wip
+
 
 ### Environment Variables
 
