@@ -1,6 +1,8 @@
 package apiserver
 
 import (
+	"fmt"
+	"io"
 	"log/slog"
 	"time"
 
@@ -26,10 +28,14 @@ type Server struct {
 	IdleTimeout  time.Duration
 }
 
+// Start ...
 func (s *Server) Start() error {
+	fmt.Fprintln(io.Discard, s)
 	panic("not implemented")
 }
 
+// Stop ...
 func (s *Server) Stop() error {
+	fmt.Fprintln(io.Discard, s)
 	panic("not implemented")
 }
