@@ -44,8 +44,11 @@ func WithLogger(l *slog.Logger) Option {
 }
 
 // WithHTTPHandler adds http handler.
-func WithHTTPHandler(path string, handler fasthttp.RequestHandler) Option {
+func WithHTTPHandler(method, path string, handler fasthttp.RequestHandler) Option {
 	return func(server *Server) error {
+		if method == "" {
+			return fmt.Errorf("method error: [%w]", cerrors.ErrValueRequired)
+		}
 		if path == "" {
 			return fmt.Errorf("path error: [%w]", cerrors.ErrValueRequired)
 		}
@@ -54,9 +57,9 @@ func WithHTTPHandler(path string, handler fasthttp.RequestHandler) Option {
 		}
 
 		if server.Handlers == nil {
-			server.Handlers = make(map[string]fasthttp.RequestHandler)
+			server.Handlers = make(map[string]methodHandler)
 		}
-		server.Handlers[path] = handler
+		server.Handlers[path] = methodHandler{method: handler}
 
 		return nil
 	}
@@ -101,11 +104,13 @@ func WithIdleTimeout(d time.Duration) Option {
 	}
 }
 
+type methodHandler map[string]fasthttp.RequestHandler
+
 // Server represents server configuration. Must implements HTTPServer interface.
 type Server struct {
 	Logger       *slog.Logger
 	FastHTTP     *fasthttp.Server
-	Handlers     map[string]fasthttp.RequestHandler
+	Handlers     map[string]methodHandler
 	ListenAddr   string
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
@@ -157,14 +162,20 @@ func New(options ...Option) (*Server, error) {
 	}
 
 	httpRouter := func(ctx *fasthttp.RequestCtx) {
-		handler, ok := server.Handlers[string(ctx.Path())]
+		methodsHandlers, ok := server.Handlers[string(ctx.Path())]
 		if !ok {
 			ctx.NotFound()
 
 			return
 		}
 
-		handler(ctx)
+		for method, handler := range methodsHandlers {
+			if method == string(ctx.Method()) {
+				handler(ctx)
+			}
+		}
+
+		ctx.SetStatusCode(fasthttp.StatusMethodNotAllowed)
 	}
 
 	fastHTTPServer := &fasthttp.Server{

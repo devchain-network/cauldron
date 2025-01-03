@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/devchain-network/cauldron/internal/slogger"
+	"github.com/valyala/fasthttp"
 	"github.com/vigo/getenv"
 )
 
@@ -33,7 +34,7 @@ func Run() error {
 	server, err := New(
 		WithLogger(logger),
 		WithListenAddr(*listenAddr),
-		WithHTTPHandler("/healthz", healthCheckHandler),
+		WithHTTPHandler(fasthttp.MethodGet, "/healthz", healthCheckHandler),
 	)
 	if err != nil {
 		return fmt.Errorf("run error, server: [%w]", err)
