@@ -2,7 +2,10 @@ module github.com/devchain-network/cauldron
 
 go 1.23.4
 
-require github.com/valyala/fasthttp v1.58.0
+require (
+	github.com/valyala/fasthttp v1.58.0
+	github.com/vigo/getenv v0.0.1
+)
 
 require (
 	github.com/andybalholm/brotli v1.1.1 // indirect

@@ -38,7 +38,10 @@ bundle
 
 ### Environment Variables
 
-@wip
+| Variable | Description | Default |
+|:---------|:------------|---------|
+| `LISTEN_ADDR` | Server listen address | `":8000"`
+
 
 ---
 
@@ -62,7 +65,12 @@ bundle
 
 ## Rake Tasks
 
-@wip
+```bash
+rake -T
+
+rake default     # default task, runs server
+rake run:server  # run server
+```
 
 ---
 

@@ -12,6 +12,7 @@ import (
 	"github.com/devchain-network/cauldron/internal/cerrors"
 	"github.com/devchain-network/cauldron/internal/slogger"
 	"github.com/valyala/fasthttp"
+	"github.com/vigo/getenv"
 )
 
 // constants.
@@ -184,6 +185,11 @@ func New(options ...Option) (*Server, error) {
 
 // Run runs the server.
 func Run() error {
+	listenAddr := getenv.TCPAddr("LISTEN_ADDR", serverDefaultListenAddr)
+	if err := getenv.Parse(); err != nil {
+		return fmt.Errorf("run error, getenv: [%w]", err)
+	}
+
 	logger, err := slogger.New()
 	if err != nil {
 		return fmt.Errorf("run error, logger: [%w]", err)
@@ -191,6 +197,7 @@ func Run() error {
 
 	server, err := New(
 		WithLogger(logger),
+		WithListenAddr(*listenAddr),
 		WithHTTPHandler("/healthz", healthCheckHandler),
 	)
 	if err != nil {
