@@ -4,15 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/devchain-network/cauldron/internal/cerrors"
-	"github.com/devchain-network/cauldron/internal/slogger"
 	"github.com/valyala/fasthttp"
-	"github.com/vigo/getenv"
 )
 
 // constants.
@@ -21,6 +16,8 @@ const (
 	serverDefaultWriteTimeout = 10 * time.Second
 	serverDefaultIdleTimeout  = 15 * time.Second
 	serverDefaultListenAddr   = ":8000"
+
+	loggerDefaultLevel = "INFO"
 )
 
 // HTTPServer defines the basic operations for managing an HTTP server's lifecycle.
@@ -181,54 +178,4 @@ func New(options ...Option) (*Server, error) {
 	server.FastHTTP = fastHTTPServer
 
 	return server, nil
-}
-
-// Run runs the server.
-func Run() error {
-	listenAddr := getenv.TCPAddr("LISTEN_ADDR", serverDefaultListenAddr)
-	if err := getenv.Parse(); err != nil {
-		return fmt.Errorf("run error, getenv: [%w]", err)
-	}
-
-	logger, err := slogger.New()
-	if err != nil {
-		return fmt.Errorf("run error, logger: [%w]", err)
-	}
-
-	server, err := New(
-		WithLogger(logger),
-		WithListenAddr(*listenAddr),
-		WithHTTPHandler("/healthz", healthCheckHandler),
-	)
-	if err != nil {
-		return fmt.Errorf("run error, server: [%w]", err)
-	}
-
-	ch := make(chan struct{})
-
-	go func() {
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-		<-sig
-
-		logger.Info("shutting down the server")
-		if err = server.Stop(); err != nil {
-			logger.Error("server stop error: [%w]", "error", err)
-		}
-		close(ch)
-	}()
-
-	if err = server.Start(); err != nil {
-		return fmt.Errorf("run error, server start: [%w]", err)
-	}
-
-	<-ch
-	logger.Info("all clear, goodbye")
-
-	return nil
-}
-
-func healthCheckHandler(ctx *fasthttp.RequestCtx) {
-	ctx.SetStatusCode(fasthttp.StatusOK)
-	ctx.SetBodyString("OK")
 }

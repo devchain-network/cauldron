@@ -37,6 +37,30 @@ func WithLogLevel(l slog.Leveler) Option {
 	}
 }
 
+// WithLogLevelName sets log level from level name, such as INFO.
+func WithLogLevelName(n string) Option {
+	return func(jl *jsonLogger) error {
+		if n == "" {
+			return fmt.Errorf("log level name error: [%w]", cerrors.ErrValueRequired)
+		}
+
+		logLevelMap := map[string]slog.Level{
+			"DEBUG": LevelDebug,
+			"INFO":  LevelInfo,
+			"WARN":  LevelWarn,
+			"ERROR": LevelError,
+		}
+
+		if level, exists := logLevelMap[n]; exists {
+			jl.level = level
+
+			return nil
+		}
+
+		return fmt.Errorf("log level name %s error: %w", n, cerrors.ErrInvalid)
+	}
+}
+
 // WithWriter sets output.
 func WithWriter(w io.Writer) Option {
 	return func(jl *jsonLogger) error {
