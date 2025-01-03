@@ -22,7 +22,7 @@ const (
 	serverDefaultListenAddr   = ":8000"
 )
 
-// HTTPServer ...
+// HTTPServer defines the basic operations for managing an HTTP server's lifecycle.
 type HTTPServer interface {
 	Start() error
 	Stop() error
@@ -30,7 +30,7 @@ type HTTPServer interface {
 
 var _ HTTPServer = (*Server)(nil) // compile time proof
 
-// Option ...
+// Option represents option function type.
 type Option func(*Server) error
 
 // WithLogger sets logger.
@@ -44,18 +44,6 @@ func WithLogger(l *slog.Logger) Option {
 		return nil
 	}
 }
-
-// // WithFastHTTP sets fast http server value.
-// func WithFastHTTP(f *fasthttp.Server) Option {
-// 	return func(server *Server) error {
-// 		if f == nil {
-// 			return fmt.Errorf("fast http error: [%w]", ErrValueRequired)
-// 		}
-// 		server.FastHTTP = f
-//
-// 		return nil
-// 	}
-// }
 
 // WithHTTPHandler adds http handler.
 func WithHTTPHandler(path string, handler fasthttp.RequestHandler) Option {
@@ -115,7 +103,7 @@ func WithIdleTimeout(d time.Duration) Option {
 	}
 }
 
-// Server ...
+// Server represents server configuration. Must implements HTTPServer interface.
 type Server struct {
 	Logger       *slog.Logger
 	FastHTTP     *fasthttp.Server
@@ -126,7 +114,7 @@ type Server struct {
 	IdleTimeout  time.Duration
 }
 
-// Start ...
+// Start starts the fast http server.
 func (s *Server) Start() error {
 	s.Logger.Info("start listening at", "addr", s.ListenAddr)
 	if err := s.FastHTTP.ListenAndServe(s.ListenAddr); err != nil {
@@ -136,7 +124,7 @@ func (s *Server) Start() error {
 	return nil
 }
 
-// Stop ...
+// Stop stops the fast http server.
 func (s *Server) Stop() error {
 	s.Logger.Info("shutting down the server")
 	if err := s.FastHTTP.ShutdownWithContext(context.Background()); err != nil {
