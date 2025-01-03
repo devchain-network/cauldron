@@ -40,8 +40,9 @@ bundle
 
 | Variable | Description | Default |
 |:---------|:------------|---------|
-| `LISTEN_ADDR` | Server listen address | `":8000"`
-
+| `LISTEN_ADDR` | Server listen address | `":8000"` |
+| `LOG_LEVEL` | Logging level, Valid values are: `"DEBUG"`, `"INFO"`, `"WARN"`, `"ERROR"` | `"INFO"` |
+| `GITHUB_HMAC_SECRET` | HMAC secret value for GitHub’s webhooks. | `""` |
 
 ---
 

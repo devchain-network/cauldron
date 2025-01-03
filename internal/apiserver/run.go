@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,9 +15,13 @@ import (
 func Run() error {
 	listenAddr := getenv.TCPAddr("LISTEN_ADDR", serverDefaultListenAddr)
 	logLevel := getenv.String("LOG_LEVEL", loggerDefaultLevel)
+	githubHMACSecret := getenv.String("GITHUB_HMAC_SECRET", "notset")
+
 	if err := getenv.Parse(); err != nil {
 		return fmt.Errorf("run error, getenv: [%w]", err)
 	}
+
+	fmt.Fprintln(io.Discard, githubHMACSecret)
 
 	logger, err := slogger.New(
 		slogger.WithLogLevelName(*logLevel),
