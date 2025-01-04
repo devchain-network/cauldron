@@ -13,4 +13,22 @@ namespace :run do
   rescue Interrupt
     0
   end
+
+  namespace :compose do
+    desc 'run docker compose up'
+    task :up do
+      system %{ docker compose -f docker-compose.local.yml up }
+      $CHILD_STATUS&.exitstatus || 1
+    rescue Interrupt
+      0
+    end
+
+    desc 'run docker compose down'
+    task :down do
+      system %{ docker compose -f docker-compose.local.yml down --remove-orphans }
+      $CHILD_STATUS&.exitstatus || 1
+    rescue Interrupt
+      0
+    end
+  end
 end
