@@ -2,15 +2,21 @@ package apiserver
 
 import (
 	"fmt"
-	"io"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/devchain-network/cauldron/internal/slogger"
+	"github.com/go-playground/webhooks/v6/github"
 	"github.com/valyala/fasthttp"
 	"github.com/vigo/getenv"
 )
+
+type githubHandlerOptions struct {
+	logger  *slog.Logger
+	webhook *github.Webhook
+}
 
 // Run runs the server.
 func Run() error {
@@ -22,7 +28,10 @@ func Run() error {
 		return fmt.Errorf("run error, getenv: [%w]", err)
 	}
 
-	fmt.Fprintln(io.Discard, githubHMACSecret)
+	githubWebhook, err := github.New(github.Options.Secret(*githubHMACSecret))
+	if err != nil {
+		return fmt.Errorf("run error, githubWebhook: [%w]", err)
+	}
 
 	logger, err := slogger.New(
 		slogger.WithLogLevelName(*logLevel),
@@ -31,10 +40,16 @@ func Run() error {
 		return fmt.Errorf("run error, logger: [%w]", err)
 	}
 
+	githubHandlerOpts := githubHandlerOptions{
+		logger:  logger,
+		webhook: githubWebhook,
+	}
+
 	server, err := New(
 		WithLogger(logger),
 		WithListenAddr(*listenAddr),
 		WithHTTPHandler(fasthttp.MethodGet, "/healthz", healthCheckHandler),
+		WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/github", githubWebhookHandler(&githubHandlerOpts)),
 	)
 	if err != nil {
 		return fmt.Errorf("run error, server: [%w]", err)

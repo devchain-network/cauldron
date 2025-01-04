@@ -168,14 +168,16 @@ func New(options ...Option) (*Server, error) {
 
 			return
 		}
-
+		var methodMatched bool
 		for method, handler := range methodsHandlers {
 			if method == string(ctx.Method()) {
+				methodMatched = true
 				handler(ctx)
 			}
 		}
-
-		ctx.SetStatusCode(fasthttp.StatusMethodNotAllowed)
+		if !methodMatched {
+			ctx.SetStatusCode(fasthttp.StatusMethodNotAllowed)
+		}
 	}
 
 	fastHTTPServer := &fasthttp.Server{
