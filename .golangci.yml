@@ -23,6 +23,7 @@ linters-settings:
       - r
       - w
       - s
+      - h
   # ---------------------------------------------------------------------------
   errcheck:
     check-type-assertions: true
