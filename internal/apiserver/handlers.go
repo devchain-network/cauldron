@@ -1,13 +1,13 @@
 package apiserver
 
 import (
-	"fmt"
+	"encoding/json"
 	"net/http"
 	"strconv"
 
+	"github.com/IBM/sarama"
 	"github.com/go-playground/webhooks/v6/github"
 	"github.com/google/uuid"
-	"github.com/kylelemons/godebug/pretty"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttpadaptor"
 )
@@ -18,10 +18,12 @@ func healthCheckHandler(ctx *fasthttp.RequestCtx) {
 	ctx.SetBodyString("OK")
 }
 
-// AnythingUnknown ...
-const AnythingUnknown = "unknown"
+// constants.
+const (
+	AnythingUnknown = "unknown"
+)
 
-// GitHubWebhookRequestHeaders ...
+// GitHubWebhookRequestHeaders represents important http headers to fetch.
 type GitHubWebhookRequestHeaders struct {
 	Event      string
 	TargetType string
@@ -30,7 +32,7 @@ type GitHubWebhookRequestHeaders struct {
 	TargetID   uint64
 }
 
-// ParseGitHubHTTPHeaders ...
+// ParseGitHubHTTPHeaders parses incoming http headers and returns required http headers.
 func ParseGitHubHTTPHeaders(h http.Header) *GitHubWebhookRequestHeaders {
 	out := &GitHubWebhookRequestHeaders{
 		Event:      AnythingUnknown,
@@ -70,7 +72,7 @@ func githubWebhookHandler(opts *githubHandlerOptions) fasthttp.RequestHandler {
 		}
 
 		httpHeaders := ParseGitHubHTTPHeaders(httpReq.Header)
-		pretty.Print(httpHeaders)
+		// pretty.Print(httpHeaders)
 
 		listenEvents := []github.Event{
 			github.IssuesEvent,
@@ -84,26 +86,47 @@ func githubWebhookHandler(opts *githubHandlerOptions) fasthttp.RequestHandler {
 			return
 		}
 
-		switch payload := payload.(type) {
-		case github.IssueCommentPayload:
-			fmt.Println("IssueCommentPayload")
-			pretty.Print(payload)
-		case github.IssuesPayload:
-			fmt.Println("IssuesPayload")
-			pretty.Print(payload)
-		case github.CreatePayload:
-			fmt.Println("CreatePayload")
-			pretty.Print(payload)
-		case github.DeletePayload:
-			fmt.Println("DeletePayload")
-			pretty.Print(payload)
-		case github.PushPayload:
-			fmt.Println("PushPayload")
-			pretty.Print(payload)
-		default:
-			fmt.Printf("payload type: %T\n", payload)
-			pretty.Print(payload)
+		opts.logger.Info(
+			"webhook received",
+			"event", httpHeaders.Event,
+			"target type", httpHeaders.TargetType,
+		)
+
+		payloadB, errm := json.Marshal(payload)
+		if errm != nil {
+			opts.logger.Error("payload marshall error: [%w]", "error", errm)
+
+			return
 		}
+
+		go func() {
+			messageKey := httpHeaders.DeliveryID.String()
+			message := &sarama.ProducerMessage{
+				Topic: "deneme",
+				Key:   sarama.StringEncoder(messageKey),
+				Value: sarama.ByteEncoder(payloadB),
+				Headers: []sarama.RecordHeader{
+					{Key: []byte("event"), Value: []byte(httpHeaders.Event)},
+					{Key: []byte("target-type"), Value: []byte(httpHeaders.TargetType)},
+					{Key: []byte("hook-id"), Value: []byte(strconv.FormatUint(httpHeaders.HookID, 10))},
+					{Key: []byte("content-type"), Value: []byte("application/json")},
+				},
+			}
+
+			opts.kafkaProducer.Input() <- message
+
+			select {
+			case success := <-opts.kafkaProducer.Successes():
+				opts.logger.Info(
+					"message sent",
+					"topic", success.Topic,
+					"partition", success.Partition,
+					"offset", success.Offset,
+				)
+			case err := <-opts.kafkaProducer.Errors():
+				opts.logger.Error("message send error", "error", err)
+			}
+		}()
 
 		opts.logger.Info("github webhook success")
 		ctx.SetStatusCode(fasthttp.StatusAccepted)

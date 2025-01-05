@@ -6,7 +6,6 @@ require (
 	github.com/IBM/sarama v1.44.0
 	github.com/go-playground/webhooks/v6 v6.4.0
 	github.com/google/uuid v1.6.0
-	github.com/kylelemons/godebug v1.1.0
 	github.com/valyala/fasthttp v1.58.0
 	github.com/vigo/getenv v0.0.1
 )

@@ -6,7 +6,9 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/IBM/sarama"
 	"github.com/devchain-network/cauldron/internal/cerrors"
+	"github.com/go-playground/webhooks/v6/github"
 	"github.com/valyala/fasthttp"
 )
 
@@ -18,6 +20,9 @@ const (
 	serverDefaultListenAddr   = ":8000"
 
 	loggerDefaultLevel = "INFO"
+
+	kkDefaultTopic   = "deneme"
+	kkDefaultBroker1 = "127.0.0.1:9094"
 )
 
 // HTTPServer defines the basic operations for managing an HTTP server's lifecycle.
@@ -104,6 +109,32 @@ func WithIdleTimeout(d time.Duration) Option {
 	}
 }
 
+// WithKafkaBrokers sets kafka brokers list.
+func WithKafkaBrokers(brokers []string) Option {
+	return func(server *Server) error {
+		if brokers == nil {
+			return fmt.Errorf("server kafka brokers error: [%w]", cerrors.ErrValueRequired)
+		}
+
+		server.KafkaBrokers = make([]string, len(brokers))
+		copy(server.KafkaBrokers, brokers)
+
+		return nil
+	}
+}
+
+// WithKafkaTopic sets kafka topic.
+func WithKafkaTopic(s string) Option {
+	return func(server *Server) error {
+		if s == "" {
+			return fmt.Errorf("erver kafka topic error: [%w]", cerrors.ErrValueRequired)
+		}
+		server.KafkaTopic = s
+
+		return nil
+	}
+}
+
 type methodHandler map[string]fasthttp.RequestHandler
 
 // Server represents server configuration. Must implements HTTPServer interface.
@@ -112,9 +143,21 @@ type Server struct {
 	FastHTTP     *fasthttp.Server
 	Handlers     map[string]methodHandler
 	ListenAddr   string
+	KafkaTopic   string
+	KafkaBrokers []string
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	IdleTimeout  time.Duration
+}
+
+type httpHandlerOptions struct {
+	logger        *slog.Logger
+	kafkaProducer sarama.AsyncProducer
+}
+
+type githubHandlerOptions struct {
+	webhook *github.Webhook
+	httpHandlerOptions
 }
 
 // Start starts the fast http server.

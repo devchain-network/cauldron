@@ -141,6 +141,10 @@ func (c Consumer) worker(id int, messages <-chan *sarama.ConsumerMessage, wg *sy
 	defer wg.Done()
 
 	for msg := range messages {
+		for _, header := range msg.Headers {
+			c.Logger.Info("header", "key", string(header.Key), "value", string(header.Value))
+		}
+
 		c.Logger.Info(
 			"received",
 			"worker id", id,
