@@ -15,12 +15,14 @@ namespace :run do
   end
 
   namespace :kafka do
-    desc 'run kafka consumer'
-    task :consumer do
-      system %{ go run -race cmd/consumer/main.go }
-      $CHILD_STATUS&.exitstatus || 1
-    rescue Interrupt
-      0
+    namespace :github do
+      desc 'run kafka github consumer'
+      task :consumer do
+        system %{ go run -race cmd/githubconsumer/main.go }
+        $CHILD_STATUS&.exitstatus || 1
+      rescue Interrupt
+        0
+      end
     end
   end
 

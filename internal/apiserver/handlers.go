@@ -72,7 +72,12 @@ func githubWebhookHandler(opts *githubHandlerOptions) fasthttp.RequestHandler {
 		}
 
 		httpHeaders := ParseGitHubHTTPHeaders(httpReq.Header)
-		// pretty.Print(httpHeaders)
+		if httpHeaders.DeliveryID == uuid.Nil {
+			opts.logger.Error("invalid X-Github-Delivery")
+			ctx.SetStatusCode(fasthttp.StatusBadRequest)
+
+			return
+		}
 
 		listenEvents := []github.Event{
 			github.IssuesEvent,
@@ -94,39 +99,30 @@ func githubWebhookHandler(opts *githubHandlerOptions) fasthttp.RequestHandler {
 
 		payloadB, errm := json.Marshal(payload)
 		if errm != nil {
-			opts.logger.Error("payload marshall error: [%w]", "error", errm)
+			opts.logger.Error("payload marshall error", "error", errm)
 
 			return
 		}
 
-		go func() {
-			messageKey := httpHeaders.DeliveryID.String()
-			message := &sarama.ProducerMessage{
-				Topic: "deneme",
-				Key:   sarama.StringEncoder(messageKey),
-				Value: sarama.ByteEncoder(payloadB),
-				Headers: []sarama.RecordHeader{
-					{Key: []byte("event"), Value: []byte(httpHeaders.Event)},
-					{Key: []byte("target-type"), Value: []byte(httpHeaders.TargetType)},
-					{Key: []byte("hook-id"), Value: []byte(strconv.FormatUint(httpHeaders.HookID, 10))},
-					{Key: []byte("content-type"), Value: []byte("application/json")},
-				},
-			}
+		messageKey := httpHeaders.DeliveryID.String()
+		message := &sarama.ProducerMessage{
+			Topic: opts.topic,
+			Key:   sarama.StringEncoder(messageKey),
+			Value: sarama.ByteEncoder(payloadB),
+			Headers: []sarama.RecordHeader{
+				{Key: []byte("event"), Value: []byte(httpHeaders.Event)},
+				{Key: []byte("target-type"), Value: []byte(httpHeaders.TargetType)},
+				{Key: []byte("hook-id"), Value: []byte(strconv.FormatUint(httpHeaders.HookID, 10))},
+				{Key: []byte("content-type"), Value: []byte("application/json")},
+			},
+		}
 
-			opts.kafkaProducer.Input() <- message
-
-			select {
-			case success := <-opts.kafkaProducer.Successes():
-				opts.logger.Info(
-					"message sent",
-					"topic", success.Topic,
-					"partition", success.Partition,
-					"offset", success.Offset,
-				)
-			case err := <-opts.kafkaProducer.Errors():
-				opts.logger.Error("message send error", "error", err)
-			}
-		}()
+		select {
+		case opts.producerMessageQueue <- message:
+			opts.logger.Info("message enqueued for processing")
+		default:
+			opts.logger.Warn("message queue is full, dropping", "message", message)
+		}
 
 		opts.logger.Info("github webhook success")
 		ctx.SetStatusCode(fasthttp.StatusAccepted)

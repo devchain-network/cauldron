@@ -21,8 +21,10 @@ const (
 
 	loggerDefaultLevel = "INFO"
 
-	kkDefaultTopic   = "deneme"
-	kkDefaultBroker1 = "127.0.0.1:9094"
+	kkDefaultGitHubTopic = "github"
+
+	kkDefaultBroker1   = "127.0.0.1:9094"
+	kkDefaultQueueSize = 100
 )
 
 // HTTPServer defines the basic operations for managing an HTTP server's lifecycle.
@@ -123,13 +125,13 @@ func WithKafkaBrokers(brokers []string) Option {
 	}
 }
 
-// WithKafkaTopic sets kafka topic.
-func WithKafkaTopic(s string) Option {
+// WithKafkaGitHubTopic sets kafka topic name for github webhooks.
+func WithKafkaGitHubTopic(s string) Option {
 	return func(server *Server) error {
 		if s == "" {
-			return fmt.Errorf("erver kafka topic error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("server kafka github topic error: [%w]", cerrors.ErrValueRequired)
 		}
-		server.KafkaTopic = s
+		server.KafkaGitHubTopic = s
 
 		return nil
 	}
@@ -139,25 +141,51 @@ type methodHandler map[string]fasthttp.RequestHandler
 
 // Server represents server configuration. Must implements HTTPServer interface.
 type Server struct {
-	Logger       *slog.Logger
-	FastHTTP     *fasthttp.Server
-	Handlers     map[string]methodHandler
-	ListenAddr   string
-	KafkaTopic   string
-	KafkaBrokers []string
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	IdleTimeout  time.Duration
+	Logger           *slog.Logger
+	FastHTTP         *fasthttp.Server
+	Handlers         map[string]methodHandler
+	ListenAddr       string
+	KafkaGitHubTopic string
+	KafkaBrokers     []string
+	ReadTimeout      time.Duration
+	WriteTimeout     time.Duration
+	IdleTimeout      time.Duration
 }
 
 type httpHandlerOptions struct {
-	logger        *slog.Logger
-	kafkaProducer sarama.AsyncProducer
+	logger               *slog.Logger
+	kafkaProducer        sarama.AsyncProducer
+	producerMessageQueue chan *sarama.ProducerMessage
+}
+
+func (h httpHandlerOptions) messageWorker(workedID int) {
+	for msg := range h.producerMessageQueue {
+		h.kafkaProducer.Input() <- msg
+
+		select {
+		case success := <-h.kafkaProducer.Successes():
+			h.logger.Info(
+				"message sent",
+				"worker id", workedID,
+				"topic", success.Topic,
+				"partition", success.Partition,
+				"offset", success.Offset,
+			)
+		case err := <-h.kafkaProducer.Errors():
+			h.logger.Error("message send error", "error", err)
+		}
+	}
+}
+
+func (h httpHandlerOptions) shutdown() {
+	close(h.producerMessageQueue)
+	h.logger.Info("waiting for message workers to finish")
 }
 
 type githubHandlerOptions struct {
 	webhook *github.Webhook
 	httpHandlerOptions
+	topic string
 }
 
 // Start starts the fast http server.

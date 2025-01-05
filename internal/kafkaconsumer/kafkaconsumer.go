@@ -19,7 +19,8 @@ import (
 const (
 	loggerDefaultLevel = "INFO"
 
-	kkDefaultTopic        = "deneme"
+	kkDefaultTopic = "github"
+
 	kkDefaultBroker1      = "127.0.0.1:9094"
 	kkDefaultDialTimeout  = 30 * time.Second
 	kkDefaultReadTimeout  = 30 * time.Second
@@ -90,7 +91,7 @@ func (c Consumer) Start() error {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt)
 
-	c.Logger.Info("consuming messages from", "topic", c.Topic)
+	c.Logger.Info("consuming messages from", "github topic", c.Topic)
 
 	messageChan := make(chan *sarama.ConsumerMessage, 10)
 	defer close(messageChan)
@@ -173,7 +174,7 @@ func WithLogger(l *slog.Logger) Option {
 	}
 }
 
-// WithTopic sets topic.
+// WithTopic sets topic name.
 func WithTopic(s string) Option {
 	return func(consumer *Consumer) error {
 		if s == "" {
@@ -286,8 +287,9 @@ func New(options ...Option) (*Consumer, error) {
 // Run runs kafa consumer.
 func Run() error {
 	logLevel := getenv.String("LOG_LEVEL", loggerDefaultLevel)
+
 	partition := getenv.Int("KK_PARTITION", 0)
-	topic := getenv.String("KK_TOPIC", kkDefaultTopic)
+	topic := getenv.String("KK_TOPIC_GITHUB", kkDefaultTopic)
 	broker1 := getenv.TCPAddr("KK_BROKER_1", kkDefaultBroker1)
 
 	dialTimeout := getenv.Duration("KK_DIAL_TIMEOUT", kkDefaultDialTimeout)
@@ -295,6 +297,7 @@ func Run() error {
 	writeTimeout := getenv.Duration("KK_WRITE_TIMEOUT", kkDefaultWriteTimeout)
 	backoff := getenv.Duration("KK_BACKOFF", kkDefaultBackoff)
 	maxRetries := getenv.Int("KK_MAX_RETRIES", kkMaxRetries)
+
 	if err := getenv.Parse(); err != nil {
 		return fmt.Errorf("kafka consumer run error, getenv: [%w]", err)
 	}
