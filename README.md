@@ -9,46 +9,100 @@ A dynamic hub where incoming webhooks brew, process, and transform seamlessly.
 
 ---
 
-## Requirements
-
-@wip
-
----
-
 ## Requirements for Local Development
 
-- `go`
-- `ruby`
-- `direnv`
-- `pre-commit`
+- `go` - current version: `1.23.4`
+- `ruby` - optional, if you add/implement `rake` tasks, will lint your ruby code.
+- `direnv` - manages your environment variables.
+- `pre-commit` - use `pre-commit install` if you plan to contribute!
+- `docker` - you can run external services with `docker-compose`
+- `ngrok` or equivalent tool if you want to receive webhooks locally.
 
-Example `.envrc`
-
-```bash
-export PATH="bin:${PATH}"
-```
+Optional; you can install `robocop` for linting `Rakefile`:
 
 ```bash
 bundle config set --local path 'ruby-vendor/bundle' --local bin 'bin'
 bundle
 ```
 
-@wip
-
-
 ### Environment Variables
+
+Environment variables for server:
 
 | Variable | Description | Default |
 |:---------|:------------|---------|
 | `LISTEN_ADDR` | Server listen address | `":8000"` |
 | `LOG_LEVEL` | Logging level, Valid values are: `"DEBUG"`, `"INFO"`, `"WARN"`, `"ERROR"` | `"INFO"` |
 | `GITHUB_HMAC_SECRET` | HMAC secret value for GitHub’s webhooks. | `""` |
+| `KP_TOPIC_GITHUB` | Topic name for GitHub Webhooks | `"github"` |
+| `KP_BROKER_1` | TCP address of Kafka broker 1 | `"127.0.0.1:9094"` |
+| `KP_PRODUCER_QUEUE_SIZE` | Size of default Kafka message producer queue size | `100` |
+
+Environment variables GitHub consumer:
+
+| Variable | Description | Default |
+|:---------|:------------|---------|
+| `KC_PARTITION` | Consumer partition number | `0` |
+| `KC_TOPIC_GITHUB` | Consumer topic for GitHub | `"github"` |
+| `KC_BROKER_1` | TCP address of Kafka broker 1 | `"127.0.0.1:9094"` |
+| `KC_DIAL_TIMEOUT` | Initial connection timeout used by broker | "`30s`" (seconds) |
+| `KC_READ_TIMEOUT` | Response timeout used by broker | "`30s`" (seconds) |
+| `KC_WRITE_TIMEOUT` | Transmit timeout used by broker | "`30s`" (seconds) |
+| `KC_BACKOFF` | Backoff value for retries | "`2s`" (seconds) |
+| `KC_MAX_RETRIES` | Maximum retry | `10` |
+
+Example `.envrc`:
+
+```bash
+export PATH="bin:${PATH}"
+
+export LISTEN_ADDR=":8000"
+export LOG_LEVEL="INFO"
+export GITHUB_HMAC_SECRET="<secret>"
+export KP_TOPIC_GITHUB="github"
+export KP_BROKER_1="127.0.0.1:9094"
+export KP_PRODUCER_QUEUE_SIZE=100
+
+export KC_PARTITION="0"
+export KC_TOPIC_GITHUB="${KP_TOPIC_GITHUB}"
+export KC_BROKER_1="${KP_BROKER_1}"
+export KC_DIAL_TIMEOUT="30s"
+export KC_READ_TIMEOUT="30s"
+export KC_WRITE_TIMEOUT="30s"
+export KC_BACKOFF="2s"
+export KC_MAX_RETRIES="10"
+```
 
 ---
 
 ## Installation
 
-@wip
+```bash
+cd /path/to/development
+git clone git@github.com:devchain-network/cauldron.git
+cd cauldron/
+go mod download
+```
+
+Run Kafka from docker with docker-compose:
+
+```bash
+docker compose -f docker-compose.local.yml up
+
+# kafka-ui is available at: http://localhost:8080/
+```
+
+Run the server:
+
+```bash
+go run cmd/server/main.go
+```
+
+Run the GitHub webhook Kafka consumer:
+
+```bash
+go run cmd/githubconsumer/main.go
+```
 
 ---
 

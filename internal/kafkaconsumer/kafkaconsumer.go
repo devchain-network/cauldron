@@ -288,15 +288,15 @@ func New(options ...Option) (*Consumer, error) {
 func Run() error {
 	logLevel := getenv.String("LOG_LEVEL", loggerDefaultLevel)
 
-	partition := getenv.Int("KK_PARTITION", 0)
-	topic := getenv.String("KK_TOPIC_GITHUB", kkDefaultTopic)
-	broker1 := getenv.TCPAddr("KK_BROKER_1", kkDefaultBroker1)
+	partition := getenv.Int("KC_PARTITION", 0)
+	topic := getenv.String("KC_TOPIC_GITHUB", kkDefaultTopic)
+	broker1 := getenv.TCPAddr("KC_BROKER_1", kkDefaultBroker1)
 
-	dialTimeout := getenv.Duration("KK_DIAL_TIMEOUT", kkDefaultDialTimeout)
-	readTimeout := getenv.Duration("KK_READ_TIMEOUT", kkDefaultReadTimeout)
-	writeTimeout := getenv.Duration("KK_WRITE_TIMEOUT", kkDefaultWriteTimeout)
-	backoff := getenv.Duration("KK_BACKOFF", kkDefaultBackoff)
-	maxRetries := getenv.Int("KK_MAX_RETRIES", kkMaxRetries)
+	dialTimeout := getenv.Duration("KC_DIAL_TIMEOUT", kkDefaultDialTimeout)
+	readTimeout := getenv.Duration("KC_READ_TIMEOUT", kkDefaultReadTimeout)
+	writeTimeout := getenv.Duration("KC_WRITE_TIMEOUT", kkDefaultWriteTimeout)
+	backoff := getenv.Duration("KC_BACKOFF", kkDefaultBackoff)
+	maxRetries := getenv.Int("KC_MAX_RETRIES", kkMaxRetries)
 
 	if err := getenv.Parse(); err != nil {
 		return fmt.Errorf("kafka consumer run error, getenv: [%w]", err)

@@ -19,9 +19,10 @@ func Run() error {
 	listenAddr := getenv.TCPAddr("LISTEN_ADDR", serverDefaultListenAddr)
 	logLevel := getenv.String("LOG_LEVEL", loggerDefaultLevel)
 	githubHMACSecret := getenv.String("GITHUB_HMAC_SECRET", "notset")
-	kafkaGitHubTopic := getenv.String("KK_GITHUB_TOPIC", kkDefaultGitHubTopic)
-	kafkaBroker1 := getenv.TCPAddr("KK_BROKER_1", kkDefaultBroker1)
-	producerMessageQueueSize := getenv.Int("KK_PRODUCER_QUEUE_SIZE", kkDefaultQueueSize)
+
+	kafkaTopicGitHub := getenv.String("KP_TOPIC_GITHUB", kkDefaultGitHubTopic)
+	kafkaBroker1 := getenv.TCPAddr("KP_BROKER_1", kkDefaultBroker1)
+	producerMessageQueueSize := getenv.Int("KP_PRODUCER_QUEUE_SIZE", kkDefaultQueueSize)
 
 	if err := getenv.Parse(); err != nil {
 		return fmt.Errorf("run error, getenv: [%w]", err)
@@ -63,7 +64,7 @@ func Run() error {
 	githubHandlerOpts := githubHandlerOptions{
 		httpHandlerOptions: commonHandlerOpts,
 		webhook:            githubWebhook,
-		topic:              *kafkaGitHubTopic,
+		topic:              *kafkaTopicGitHub,
 	}
 
 	numMessageWorkers := runtime.NumCPU()
@@ -82,7 +83,7 @@ func Run() error {
 	server, err := New(
 		WithLogger(logger),
 		WithListenAddr(*listenAddr),
-		WithKafkaGitHubTopic(*kafkaGitHubTopic),
+		WithKafkaGitHubTopic(*kafkaTopicGitHub),
 		WithKafkaBrokers(kafkaBrokers),
 		WithHTTPHandler(fasthttp.MethodGet, "/healthz", healthCheckHandler),
 		WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/github", githubWebhookHandler(&githubHandlerOpts)),
