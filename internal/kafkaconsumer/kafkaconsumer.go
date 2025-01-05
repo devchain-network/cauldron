@@ -6,28 +6,41 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/devchain-network/cauldron/internal/cerrors"
-	"github.com/devchain-network/cauldron/internal/slogger"
 	"github.com/vigo/getenv"
 )
 
+// TCPAddrs represents comma separated tcp addr list.
+type TCPAddrs string
+
+// List validates and return list of tcp addrs.
+func (t TCPAddrs) List() []string {
+	var addrs []string
+	for _, addr := range strings.Split(string(t), ",") {
+		if err := getenv.ValidateTCPNetworkAddress(addr); err == nil {
+			addrs = append(addrs, addr)
+		}
+	}
+
+	return addrs
+}
+
 // constants.
 const (
-	loggerDefaultLevel = "INFO"
+	DefaultKafkaBrokers = "127.0.0.1:9094"
 
-	kkDefaultTopic = "github"
+	DefaultKafkaConsumerPartition    = 0
+	DefaultKafkaConsumerDialTimeout  = 30 * time.Second
+	DefaultKafkaConsumerReadTimeout  = 30 * time.Second
+	DefaultKafkaConsumerWriteTimeout = 30 * time.Second
 
-	kkDefaultBroker1      = "127.0.0.1:9094"
-	kkDefaultDialTimeout  = 30 * time.Second
-	kkDefaultReadTimeout  = 30 * time.Second
-	kkDefaultWriteTimeout = 30 * time.Second
-
-	kkDefaultBackoff = 2 * time.Second
-	kkMaxRetries     = 10
+	DefaultKafkaConsumerBackoff    = 2 * time.Second
+	DefaultKafkaConsumerMaxRetries = 10
 )
 
 // KafkaConsumer defines kafka consumer behaviours.
@@ -56,9 +69,9 @@ func (c Consumer) Start() error {
 
 	var consumer sarama.Consumer
 	var consumerErr error
-	backoff := kkDefaultBackoff
+	backoff := c.Backoff
 
-	for i := range kkMaxRetries {
+	for i := range c.MaxRetries {
 		consumer, consumerErr = sarama.NewConsumer(c.Brokers, config)
 		if consumerErr == nil {
 			break
@@ -78,20 +91,20 @@ func (c Consumer) Start() error {
 	}
 
 	if consumerErr != nil {
-		return fmt.Errorf("new consumer error: [%w]", consumerErr)
+		return fmt.Errorf("kafkaconsumer.Consumer.Start error: [%w]", consumerErr)
 	}
 	defer func() { _ = consumer.Close() }()
 
-	partitionConsumer, errpc := consumer.ConsumePartition(c.Topic, c.Partition, sarama.OffsetNewest)
-	if errpc != nil {
-		return fmt.Errorf("partition consumer error: [%w]", errpc)
+	partitionConsumer, err := consumer.ConsumePartition(c.Topic, c.Partition, sarama.OffsetNewest)
+	if err != nil {
+		return fmt.Errorf("kafkaconsumer.Consumer consumer.ConsumePartition error: [%w]", err)
 	}
 	defer func() { _ = partitionConsumer.Close() }()
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt)
 
-	c.Logger.Info("consuming messages from", "github topic", c.Topic)
+	c.Logger.Info("consuming messages from", "topic", c.Topic)
 
 	messageChan := make(chan *sarama.ConsumerMessage, 10)
 	defer close(messageChan)
@@ -143,7 +156,11 @@ func (c Consumer) worker(id int, messages <-chan *sarama.ConsumerMessage, wg *sy
 
 	for msg := range messages {
 		for _, header := range msg.Headers {
-			c.Logger.Info("header", "key", string(header.Key), "value", string(header.Value))
+			c.Logger.Info(
+				"header",
+				"key", string(header.Key),
+				"value", string(header.Value),
+			)
 		}
 
 		c.Logger.Info(
@@ -166,7 +183,7 @@ type Option func(*Consumer) error
 func WithLogger(l *slog.Logger) Option {
 	return func(consumer *Consumer) error {
 		if l == nil {
-			return fmt.Errorf("consumer logger error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("kafkaconsumer.WithLogger error: [%w]", cerrors.ErrValueRequired)
 		}
 		consumer.Logger = l
 
@@ -178,7 +195,7 @@ func WithLogger(l *slog.Logger) Option {
 func WithTopic(s string) Option {
 	return func(consumer *Consumer) error {
 		if s == "" {
-			return fmt.Errorf("consumer topic error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("kafkaconsumer.WithLogger error: [%w]", cerrors.ErrValueRequired)
 		}
 		consumer.Topic = s
 
@@ -190,7 +207,7 @@ func WithTopic(s string) Option {
 func WithBrokers(brokers []string) Option {
 	return func(consumer *Consumer) error {
 		if brokers == nil {
-			return fmt.Errorf("consumer brokers error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("kafkaconsumer.WithBrokers error: [%w]", cerrors.ErrValueRequired)
 		}
 
 		consumer.Brokers = make([]string, len(brokers))
@@ -204,7 +221,7 @@ func WithBrokers(brokers []string) Option {
 func WithPartition(i int) Option {
 	return func(consumer *Consumer) error {
 		if i > 2147483647 || i < -2147483648 {
-			return fmt.Errorf("consumer partition error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf("kafkaconsumer.WithPartition error: [%w]", cerrors.ErrInvalid)
 		}
 		consumer.Partition = int32(i)
 
@@ -243,7 +260,7 @@ func WithWriteTimeout(d time.Duration) Option {
 func WithBackoff(d time.Duration) Option {
 	return func(consumer *Consumer) error {
 		if d == 0 {
-			return fmt.Errorf("consumer backoff error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("kafkaconsumer.WithBackoff error: [%w]", cerrors.ErrValueRequired)
 		}
 		consumer.Backoff = d
 
@@ -255,7 +272,7 @@ func WithBackoff(d time.Duration) Option {
 func WithMaxRetries(i int) Option {
 	return func(consumer *Consumer) error {
 		if i > 255 || i < 0 {
-			return fmt.Errorf("consumer max retries error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf("kafkaconsumer.WithMaxRetries error: [%w]", cerrors.ErrInvalid)
 		}
 		consumer.MaxRetries = uint8(i)
 
@@ -269,66 +286,17 @@ func New(options ...Option) (*Consumer, error) {
 
 	for _, option := range options {
 		if err := option(consumer); err != nil {
-			return nil, fmt.Errorf("consumer option error: [%w]", err)
+			return nil, fmt.Errorf("kafkaconsumer.New option error: [%w]", err)
 		}
 	}
 
 	if consumer.Logger == nil {
-		return nil, fmt.Errorf("consumer logger error: [%w]", cerrors.ErrValueRequired)
+		return nil, fmt.Errorf("kafkaconsumer.New consumer.Logger error: [%w]", cerrors.ErrValueRequired)
 	}
 
 	if consumer.Topic == "" {
-		return nil, fmt.Errorf("consumer topic error: [%w]", cerrors.ErrValueRequired)
+		return nil, fmt.Errorf("kafkaconsumer.New consumer.Topic error: [%w]", cerrors.ErrValueRequired)
 	}
 
 	return consumer, nil
-}
-
-// Run runs kafa consumer.
-func Run() error {
-	logLevel := getenv.String("LOG_LEVEL", loggerDefaultLevel)
-
-	partition := getenv.Int("KC_PARTITION", 0)
-	topic := getenv.String("KC_TOPIC_GITHUB", kkDefaultTopic)
-	broker1 := getenv.TCPAddr("KC_BROKER_1", kkDefaultBroker1)
-
-	dialTimeout := getenv.Duration("KC_DIAL_TIMEOUT", kkDefaultDialTimeout)
-	readTimeout := getenv.Duration("KC_READ_TIMEOUT", kkDefaultReadTimeout)
-	writeTimeout := getenv.Duration("KC_WRITE_TIMEOUT", kkDefaultWriteTimeout)
-	backoff := getenv.Duration("KC_BACKOFF", kkDefaultBackoff)
-	maxRetries := getenv.Int("KC_MAX_RETRIES", kkMaxRetries)
-
-	if err := getenv.Parse(); err != nil {
-		return fmt.Errorf("kafka consumer run error, getenv: [%w]", err)
-	}
-
-	logger, errlg := slogger.New(
-		slogger.WithLogLevelName(*logLevel),
-	)
-	if errlg != nil {
-		return fmt.Errorf("run error, logger: [%w]", errlg)
-	}
-
-	brokers := []string{*broker1}
-
-	kafkaCons, errkc := New(
-		WithLogger(logger),
-		WithTopic(*topic),
-		WithPartition(*partition),
-		WithBrokers(brokers),
-		WithDialTimeout(*dialTimeout),
-		WithReadTimeout(*readTimeout),
-		WithWriteTimeout(*writeTimeout),
-		WithBackoff(*backoff),
-		WithMaxRetries(*maxRetries),
-	)
-	if errkc != nil {
-		return fmt.Errorf("kafka consumer run error, new kafka consumer: [%w]", errkc)
-	}
-
-	if err := kafkaCons.Start(); err != nil {
-		return fmt.Errorf("run error, consumer.Run: [%w]", err)
-	}
-
-	return nil
 }
