@@ -14,6 +14,16 @@ namespace :run do
     0
   end
 
+  namespace :kafka do
+    desc 'run kafka consumer'
+    task :consumer do
+      system %{ go run -race cmd/consumer/main.go }
+      $CHILD_STATUS&.exitstatus || 1
+    rescue Interrupt
+      0
+    end
+  end
+
   namespace :compose do
     desc 'run docker compose up'
     task :up do

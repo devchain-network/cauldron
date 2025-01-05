@@ -69,8 +69,11 @@ bundle
 ```bash
 rake -T
 
-rake default     # default task, runs server
-rake run:server  # run server
+rake default             # default task, runs server
+rake run:compose:down    # run docker compose down
+rake run:compose:up      # run docker compose up
+rake run:kafka:consumer  # run kafka consumer
+rake run:server          # run server
 ```
 
 ---
