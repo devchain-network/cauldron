@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"time"
 
@@ -91,34 +92,37 @@ func (c Consumer) Start() error {
 
 	c.Logger.Info("consuming messages from", "topic", c.Topic)
 
+	messageChan := make(chan *sarama.ConsumerMessage, 10)
+	defer close(messageChan)
+
+	numWorkers := runtime.NumCPU()
+	c.Logger.Info("starting workers", "count", numWorkers)
+
 	var wg sync.WaitGroup
-	wg.Add(1)
+	for i := range numWorkers {
+		wg.Add(1)
+		go c.worker(i, messageChan, &wg)
+	}
 
 	go func() {
-		defer func() { wg.Done() }()
-
 		for {
 			select {
 			case msg := <-partitionConsumer.Messages():
 				if msg != nil {
-					c.Logger.Info(
-						"received",
-						"key", string(msg.Key),
-						"value", string(msg.Value),
-						"offset", msg.Offset,
-						"partition", msg.Partition,
-					)
+					messageChan <- msg
 				}
 			case err := <-partitionConsumer.Errors():
 				c.Logger.Error("partition consumer error", "err", err)
 			case <-signals:
-				c.Logger.Info("shutting down")
+				c.Logger.Info("shutting down message producer")
 
 				return
 			}
 		}
 	}()
+
 	wg.Wait()
+	c.Logger.Info("all workers stopped")
 
 	return nil
 }
@@ -131,6 +135,23 @@ func (c Consumer) getConfig() *sarama.Config {
 	config.Net.WriteTimeout = c.WriteTimeout
 
 	return config
+}
+
+func (c Consumer) worker(id int, messages <-chan *sarama.ConsumerMessage, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for msg := range messages {
+		c.Logger.Info(
+			"received",
+			"worker id", id,
+			"key", string(msg.Key),
+			"value", string(msg.Value),
+			"offset", msg.Offset,
+			"partition", msg.Partition,
+		)
+
+		// process message here...
+	}
 }
 
 // Option represents option function type.
