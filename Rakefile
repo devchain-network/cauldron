@@ -44,3 +44,49 @@ namespace :run do
     end
   end
 end
+
+namespace :docker do
+  namespace :run do
+    desc 'run server'
+    task :server do
+      system %{
+        docker run \
+          --env GITHUB_HMAC_SECRET=${GITHUB_HMAC_SECRET} \
+          -p 8000:8000 \
+          devchain-server:latest
+      }
+      $CHILD_STATUS&.exitstatus || 1
+    rescue Interrupt
+      0
+    end
+
+    desc 'run github consumer'
+    task :github_consumer do
+      system %{
+        docker run \
+          --env KC_TOPIC=${KC_TOPIC} \
+          devchain-gh-consumer:latest
+      }
+      $CHILD_STATUS&.exitstatus || 1
+    rescue Interrupt
+      0
+    end
+  end
+  namespace :build do
+    desc 'build server'
+    task :server do
+      system %{ docker build -f Dockerfile.server -t devchain-server:latest . }
+      $CHILD_STATUS&.exitstatus || 1
+    rescue Interrupt
+      0
+    end
+
+    desc 'build github consumer'
+    task :github_consumer do
+      system %{ docker build -f Dockerfile.github-consumer -t devchain-gh-consumer:latest . }
+      $CHILD_STATUS&.exitstatus || 1
+    rescue Interrupt
+      0
+    end
+  end
+end

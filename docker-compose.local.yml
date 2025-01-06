@@ -16,6 +16,8 @@ services:
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT'
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+    networks:
+      - devchain-network
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -27,7 +29,42 @@ services:
       DYNAMIC_CONFIG_ENABLED: 'true'
       KAFKA_CLUSTERS_0_NAME: 'devchain'
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      LOGGING_LEVEL_ROOT: 'error'
+      LOGGING_LEVEL_COM_PROVECTUS: 'error'
+    networks:
+      - devchain-network
+  
+  cauldron:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "8000:8000"
+    environment:
+      GITHUB_HMAC_SECRET: "${GITHUB_HMAC_SECRET}"
+      KCP_BROKERS: "kafka:9092"
+    depends_on:
+      - kafka
+    networks:
+      - devchain-network
+
+  github-consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile.github-consumer
+    environment:
+      KC_TOPIC: "github"
+      KCP_BROKERS: "kafka:9092"
+    depends_on:
+      - kafka
+      - cauldron
+    networks:
+      - devchain-network
 
 volumes:
   kafka_data:
     driver: local
+
+networks:
+  devchain-network:
+    driver: bridge

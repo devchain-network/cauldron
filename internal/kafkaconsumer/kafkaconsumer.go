@@ -22,7 +22,7 @@ type TCPAddrs string
 func (t TCPAddrs) List() []string {
 	var addrs []string
 	for _, addr := range strings.Split(string(t), ",") {
-		if err := getenv.ValidateTCPNetworkAddress(addr); err == nil {
+		if _, err := getenv.ValidateTCPNetworkAddress(addr); err == nil {
 			addrs = append(addrs, addr)
 		}
 	}

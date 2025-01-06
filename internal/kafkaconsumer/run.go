@@ -12,7 +12,7 @@ func Run() error {
 	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
 
 	partition := getenv.Int("KC_PARTITION", DefaultKafkaConsumerPartition)
-	topic := getenv.String("KCP_TOPIC_GITHUB", "")
+	topic := getenv.String("KC_TOPIC", "")
 
 	brokersList := getenv.String("KCP_BROKERS", DefaultKafkaBrokers)
 

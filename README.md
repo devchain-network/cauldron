@@ -42,7 +42,9 @@ Environment variables GitHub consumer:
 
 | Variable | Description | Default |
 |:---------|:------------|---------|
+| `LOG_LEVEL` | Logging level, Valid values are: `"DEBUG"`, `"INFO"`, `"WARN"`, `"ERROR"` | `"INFO"` |
 | `KC_PARTITION` | Consumer partition number | `0` |
+| `KC_TOPIC` | Topic to subscribe | `""` |
 | `KCP_BROKERS` | Kafka consumer/producer brokers list, comma separated | `"127.0.0.1:9094"` |
 | `KC_DIAL_TIMEOUT` | Initial connection timeout used by broker | "`30s`" (seconds) |
 | `KC_READ_TIMEOUT` | Response timeout used by broker | "`30s`" (seconds) |
@@ -67,9 +69,9 @@ export KCP_BROKERS="127.0.0.1:9094"
 # kafka producer values.
 export KP_PRODUCER_QUEUE_SIZE=100
 
-# kafka consumer values.
+# kafka github consumer values.
 export KC_PARTITION="0"
-export KC_TOPIC_GITHUB="${KP_TOPIC_GITHUB}"
+export KC_TOPIC="${KP_TOPIC_GITHUB}"
 export KC_DIAL_TIMEOUT="30s"
 export KC_READ_TIMEOUT="30s"
 export KC_WRITE_TIMEOUT="30s"

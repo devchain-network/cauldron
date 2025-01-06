@@ -5,7 +5,7 @@ COPY . .
 
 ARG GOOS
 ARG GOARCH
-RUN CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -o server cmd/server/main.go
+RUN CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -o consumer cmd/githubconsumer/main.go
 
 FROM alpine:latest AS certs
 RUN apk add --update --no-cache ca-certificates
@@ -22,10 +22,9 @@ RUN adduser \
     appuser
 USER appuser
 COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=builder /build/server /server
+COPY --from=builder /build/consumer /consumer
 
-EXPOSE 8000
-ENTRYPOINT ["/server"]
+ENTRYPOINT ["/consumer"]
 
 LABEL org.opencontainers.image.authors="Uğur vigo Özyılmazel <vigo@devchain.network>"
 LABEL org.opencontainers.image.licenses="MIT"

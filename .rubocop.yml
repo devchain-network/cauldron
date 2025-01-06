@@ -4,7 +4,7 @@ AllCops:
     - 'tmp/**/*'
     - '.git/**/*'
     - 'bin/**/*'
-    - 'vendor/**/*'
+    - 'ruby-vendor/**/*'
   NewCops: enable
 
 Layout/EmptyLines:

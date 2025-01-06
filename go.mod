@@ -7,7 +7,7 @@ require (
 	github.com/go-playground/webhooks/v6 v6.4.0
 	github.com/google/uuid v1.6.0
 	github.com/valyala/fasthttp v1.58.0
-	github.com/vigo/getenv v0.0.1
+	github.com/vigo/getenv v0.0.2
 )
 
 require (
