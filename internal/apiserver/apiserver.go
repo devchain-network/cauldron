@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/IBM/sarama"
@@ -134,28 +135,18 @@ func WithKafkaGitHubTopic(s string) Option {
 	}
 }
 
-type methodHandler map[string]fasthttp.RequestHandler
-
-// Server represents server configuration. Must implements HTTPServer interface.
-type Server struct {
-	Logger           *slog.Logger
-	FastHTTP         *fasthttp.Server
-	Handlers         map[string]methodHandler
-	ListenAddr       string
-	KafkaGitHubTopic string
-	KafkaBrokers     []string
-	ReadTimeout      time.Duration
-	WriteTimeout     time.Duration
-	IdleTimeout      time.Duration
-}
-
 type httpHandlerOptions struct {
 	logger               *slog.Logger
 	kafkaProducer        sarama.AsyncProducer
 	producerMessageQueue chan *sarama.ProducerMessage
 }
 
-func (h httpHandlerOptions) messageWorker(workedID int) {
+func (h httpHandlerOptions) messageWorker(workedID int, wg *sync.WaitGroup) {
+	defer func() {
+		h.logger.Info("terminating message worker", "worker id", workedID)
+		wg.Done()
+	}()
+
 	for msg := range h.producerMessageQueue {
 		h.kafkaProducer.Input() <- msg
 
@@ -183,6 +174,21 @@ type githubHandlerOptions struct {
 	webhook *github.Webhook
 	httpHandlerOptions
 	topic string
+}
+
+type methodHandler map[string]fasthttp.RequestHandler
+
+// Server represents server configuration. Must implements HTTPServer interface.
+type Server struct {
+	Logger           *slog.Logger
+	FastHTTP         *fasthttp.Server
+	Handlers         map[string]methodHandler
+	ListenAddr       string
+	KafkaGitHubTopic string
+	KafkaBrokers     []string
+	ReadTimeout      time.Duration
+	WriteTimeout     time.Duration
+	IdleTimeout      time.Duration
 }
 
 // Start starts the fast http server.

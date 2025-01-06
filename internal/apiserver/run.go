@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"sync"
 	"syscall"
 
 	"github.com/IBM/sarama"
@@ -75,10 +76,6 @@ func Run() error {
 		*producerMessageQueueSize,
 	)
 
-	for i := range numMessageWorkers {
-		go commonHandlerOpts.messageWorker(i)
-	}
-
 	server, err := New(
 		WithLogger(logger),
 		WithListenAddr(*listenAddr),
@@ -92,6 +89,12 @@ func Run() error {
 	}
 
 	ch := make(chan struct{})
+
+	var wg sync.WaitGroup
+	for i := range numMessageWorkers {
+		wg.Add(1)
+		go commonHandlerOpts.messageWorker(i, &wg)
+	}
 
 	go func() {
 		sig := make(chan os.Signal, 1)
@@ -111,6 +114,7 @@ func Run() error {
 	}
 
 	<-ch
+	wg.Wait()
 	logger.Info("all clear, goodbye")
 
 	return nil
