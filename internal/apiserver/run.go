@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/devchain-network/cauldron/internal/kafkaconsumer"
@@ -24,6 +25,8 @@ func Run() error {
 	kafkaTopicGitHub := getenv.String("KP_TOPIC_GITHUB", kkDefaultGitHubTopic)
 	brokersList := getenv.String("KCP_BROKERS", kafkaconsumer.DefaultKafkaBrokers)
 	producerMessageQueueSize := getenv.Int("KP_PRODUCER_QUEUE_SIZE", kkDefaultQueueSize)
+	backoff := getenv.Duration("KC_BACKOFF", kafkaconsumer.DefaultKafkaConsumerBackoff)
+	maxRetries := getenv.Int("KC_MAX_RETRIES", kafkaconsumer.DefaultKafkaConsumerMaxRetries)
 	if err := getenv.Parse(); err != nil {
 		return fmt.Errorf("apiserver.Run getenv.Parse error: [%w]", err)
 	}
@@ -47,8 +50,28 @@ func Run() error {
 	kafkaConfig.Producer.Return.Successes = true
 	kafkaConfig.Producer.Return.Errors = true
 
-	kafkaProducer, err := sarama.NewAsyncProducer(kafkaBrokers, kafkaConfig)
-	if err != nil {
+	var kafkaProducer sarama.AsyncProducer
+	var kafkaProducerErr error
+
+	for i := range *maxRetries {
+		kafkaProducer, kafkaProducerErr = sarama.NewAsyncProducer(kafkaBrokers, kafkaConfig)
+		if kafkaProducerErr == nil {
+			break
+		}
+
+		logger.Error(
+			"can not connect broker",
+			"error",
+			kafkaProducerErr,
+			"retry",
+			fmt.Sprintf("%d/%d", i, *maxRetries),
+			"backoff",
+			backoff.String(),
+		)
+		time.Sleep(*backoff)
+		*backoff *= 2
+	}
+	if kafkaProducerErr != nil {
 		return fmt.Errorf("apiserver.Run sarama.NewAsyncProducer error: [%w]", err)
 	}
 

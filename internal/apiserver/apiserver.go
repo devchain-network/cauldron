@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -12,6 +13,9 @@ import (
 	"github.com/go-playground/webhooks/v6/github"
 	"github.com/valyala/fasthttp"
 )
+
+//go:embed VERSION
+var serverVersion string
 
 // constants.
 const (
@@ -193,7 +197,7 @@ type Server struct {
 
 // Start starts the fast http server.
 func (s *Server) Start() error {
-	s.Logger.Info("start listening at", "addr", s.ListenAddr)
+	s.Logger.Info("start listening at", "addr", s.ListenAddr, "version", serverVersion)
 	if err := s.FastHTTP.ListenAndServe(s.ListenAddr); err != nil {
 		return fmt.Errorf("apiserver.Server.Start FastHTTP.ListenAndServe error: [%w]", err)
 	}
