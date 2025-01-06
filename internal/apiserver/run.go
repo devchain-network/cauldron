@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/IBM/sarama"
+	"github.com/devchain-network/cauldron/internal/kafkaconsumer"
 	"github.com/devchain-network/cauldron/internal/slogger"
 	"github.com/go-playground/webhooks/v6/github"
 	"github.com/valyala/fasthttp"
@@ -17,39 +18,37 @@ import (
 // Run runs the server.
 func Run() error {
 	listenAddr := getenv.TCPAddr("LISTEN_ADDR", serverDefaultListenAddr)
-	logLevel := getenv.String("LOG_LEVEL", loggerDefaultLevel)
-	githubHMACSecret := getenv.String("GITHUB_HMAC_SECRET", "notset")
-
+	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
+	githubHMACSecret := getenv.String("GITHUB_HMAC_SECRET", "")
 	kafkaTopicGitHub := getenv.String("KP_TOPIC_GITHUB", kkDefaultGitHubTopic)
-	kafkaBroker1 := getenv.TCPAddr("KP_BROKER_1", kkDefaultBroker1)
+	brokersList := getenv.String("KCP_BROKERS", kafkaconsumer.DefaultKafkaBrokers)
 	producerMessageQueueSize := getenv.Int("KP_PRODUCER_QUEUE_SIZE", kkDefaultQueueSize)
-
 	if err := getenv.Parse(); err != nil {
-		return fmt.Errorf("run error, getenv: [%w]", err)
+		return fmt.Errorf("apiserver.Run getenv.Parse error: [%w]", err)
 	}
 
 	githubWebhook, err := github.New(github.Options.Secret(*githubHMACSecret))
 	if err != nil {
-		return fmt.Errorf("run error, githubWebhook: [%w]", err)
+		return fmt.Errorf("apiserver.Run github.New error: [%w]", err)
 	}
 
 	logger, err := slogger.New(
 		slogger.WithLogLevelName(*logLevel),
 	)
 	if err != nil {
-		return fmt.Errorf("run error, logger: [%w]", err)
+		return fmt.Errorf("apiserver.Run slogger.New error: [%w]", err)
 	}
 
-	kafkaBrokers := []string{*kafkaBroker1}
+	kafkaBrokers := kafkaconsumer.TCPAddrs(*brokersList).List()
 
 	kafkaConfig := sarama.NewConfig()
 	kafkaConfig.Producer.RequiredAcks = sarama.WaitForAll
 	kafkaConfig.Producer.Return.Successes = true
 	kafkaConfig.Producer.Return.Errors = true
 
-	kafkaProducer, errkp := sarama.NewAsyncProducer(kafkaBrokers, kafkaConfig)
-	if errkp != nil {
-		return fmt.Errorf("run error, kafkaProducer: [%w]", errkp)
+	kafkaProducer, err := sarama.NewAsyncProducer(kafkaBrokers, kafkaConfig)
+	if err != nil {
+		return fmt.Errorf("apiserver.Run sarama.NewAsyncProducer error: [%w]", err)
 	}
 
 	defer func() { _ = kafkaProducer.Close() }()
@@ -89,7 +88,7 @@ func Run() error {
 		WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/github", githubWebhookHandler(&githubHandlerOpts)),
 	)
 	if err != nil {
-		return fmt.Errorf("run error, server: [%w]", err)
+		return fmt.Errorf("apiserver.Run apiserver.New error: [%w]", err)
 	}
 
 	ch := make(chan struct{})
@@ -108,7 +107,7 @@ func Run() error {
 	}()
 
 	if errStop := server.Start(); err != nil {
-		return fmt.Errorf("run error, server start: [%w]", errStop)
+		return fmt.Errorf("apiserver.Run server.Start error: [%w]", errStop)
 	}
 
 	<-ch

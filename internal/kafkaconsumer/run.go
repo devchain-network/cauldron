@@ -12,9 +12,9 @@ func Run() error {
 	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
 
 	partition := getenv.Int("KC_PARTITION", DefaultKafkaConsumerPartition)
-	topic := getenv.String("KC_TOPIC_GITHUB", "")
+	topic := getenv.String("KCP_TOPIC_GITHUB", "")
 
-	brokersList := getenv.String("KC_BROKERS", DefaultKafkaBrokers)
+	brokersList := getenv.String("KCP_BROKERS", DefaultKafkaBrokers)
 
 	dialTimeout := getenv.Duration("KC_DIAL_TIMEOUT", DefaultKafkaConsumerDialTimeout)
 	readTimeout := getenv.Duration("KC_READ_TIMEOUT", DefaultKafkaConsumerReadTimeout)
