@@ -126,7 +126,7 @@ func (c Consumer) Start() error {
 					messageChan <- msg
 				}
 			case err := <-partitionConsumer.Errors():
-				c.Logger.Error("partition consumer error", "err", err)
+				c.Logger.Error("partition consumer error", "error", err)
 			case <-signals:
 				c.Logger.Info("shutting down message producer")
 
