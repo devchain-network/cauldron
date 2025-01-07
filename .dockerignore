@@ -8,6 +8,7 @@
 **/.bundle
 **/bin
 **/Dockerfile*
+**/docker-compose*
 **/tmp*
 **/.pre-commit-config.yaml
 **/.bumpversion.toml
