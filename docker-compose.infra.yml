@@ -1,4 +1,19 @@
 services:
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    depends_on:
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      DYNAMIC_CONFIG_ENABLED: 'true'
+      KAFKA_CLUSTERS_0_NAME: 'devchain'
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      LOGGING_LEVEL_ROOT: 'error'
+      LOGGING_LEVEL_COM_PROVECTUS: 'error'
+    networks:
+      - devchain-network
+
   kafka:
     image: bitnami/kafka:3.9
     ports:
@@ -21,21 +36,6 @@ services:
     networks:
       - devchain-network
 
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    depends_on:
-      - kafka
-    ports:
-      - "8080:8080"
-    environment:
-      DYNAMIC_CONFIG_ENABLED: 'true'
-      KAFKA_CLUSTERS_0_NAME: 'devchain'
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
-      LOGGING_LEVEL_ROOT: 'error'
-      LOGGING_LEVEL_COM_PROVECTUS: 'error'
-    networks:
-      - devchain-network
-  
   cauldron:
     build:
       context: .
