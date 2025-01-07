@@ -25,24 +25,6 @@ namespace :run do
       end
     end
   end
-
-  namespace :compose do
-    desc 'run docker compose up'
-    task :up do
-      system %{ docker compose -f docker-compose.local.yml up }
-      $CHILD_STATUS&.exitstatus || 1
-    rescue Interrupt
-      0
-    end
-
-    desc 'run docker compose down'
-    task :down do
-      system %{ docker compose -f docker-compose.local.yml down --remove-orphans }
-      $CHILD_STATUS&.exitstatus || 1
-    rescue Interrupt
-      0
-    end
-  end
 end
 
 namespace :docker do
@@ -88,5 +70,45 @@ namespace :docker do
     rescue Interrupt
       0
     end
+  end
+
+  namespace :compose do
+
+    namespace :kafka do
+      desc 'run the kafka and kafka-ui only'
+      task :up do
+        system %{ docker compose -f docker-compose.kafka.yml up }
+        $CHILD_STATUS&.exitstatus || 1
+      rescue Interrupt
+        0
+      end
+
+      desc 'stop the kafka and kafka-ui only'
+      task :down do
+        system %{ docker compose -f docker-compose.kafka.yml down --remove-orphans }
+        $CHILD_STATUS&.exitstatus || 1
+      rescue Interrupt
+        0
+      end
+    end
+
+    namespace :infra do
+      desc 'run the infra with all components'
+      task :up do
+        system %{ docker compose -f docker-compose.infra.yml up }
+        $CHILD_STATUS&.exitstatus || 1
+      rescue Interrupt
+        0
+      end
+
+      desc 'stop the infra with all components'
+      task :down do
+        system %{ docker compose -f docker-compose.infra.yml down --remove-orphans }
+        $CHILD_STATUS&.exitstatus || 1
+      rescue Interrupt
+        0
+      end
+    end
+
   end
 end
