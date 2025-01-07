@@ -152,3 +152,5 @@ You can access kafka-ui from:
 
 http://127.0.0.1:8080/
 
+Logging for kafka and kafka-ui is set to `error` only. Due to development
+purposes, both were producing too much information, little clean up required.

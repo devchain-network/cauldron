@@ -6,6 +6,7 @@ services:
       - "9094:9094"
     volumes:
       - "kafka_data:/bitnami"
+      - "./log4j.properties:/opt/bitnami/kafka/config/log4j.properties"
     environment:
       KAFKA_CFG_NODE_ID: 0
       KAFKA_CFG_PROCESS_ROLES: 'controller,broker'
@@ -16,6 +17,7 @@ services:
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT'
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_LOG4J_OPTS: '-Dlog4j.configuration=file:/opt/bitnami/kafka/config/log4j.properties'
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
