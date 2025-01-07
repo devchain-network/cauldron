@@ -77,7 +77,7 @@ namespace :docker do
     namespace :kafka do
       desc 'run the kafka and kafka-ui only'
       task :up do
-        system %{ docker compose -f docker-compose.kafka.yml up }
+        system %{ docker compose -f docker-compose.kafka.yml up --build }
         $CHILD_STATUS&.exitstatus || 1
       rescue Interrupt
         0
@@ -95,7 +95,7 @@ namespace :docker do
     namespace :infra do
       desc 'run the infra with all components'
       task :up do
-        system %{ docker compose -f docker-compose.infra.yml up }
+        system %{ docker compose -f docker-compose.infra.yml up --build }
         $CHILD_STATUS&.exitstatus || 1
       rescue Interrupt
         0
