@@ -13,7 +13,17 @@ all the required services.
 - `pre-commit` - optional, use `pre-commit install` if you plan to contribute!
 - `direnv` - optional, recommended, manages your environment variables over `.envrc`
 - `docker` - optional, recommended, you can run external/all services with `docker-compose`
-- `ngrok` or equivalent tool if you want to receive webhooks locally.
+- `ngrok` - or equivalent tool if you want to receive webhooks locally.
+- `golang-migrate` - for database revision management.
+
+If you are on macOS or Linux and using [homebrew][001], you can install everything via:
+
+```bash
+brew install go postgresql pre-commit direnv golang-migrate
+```
+
+I highly recommend [Orbstack][002] for macOS instead of `docker` community
+edition.
 
 If you add `rake task` please use `robocop` for linting `Rakefile`:
 
@@ -154,3 +164,6 @@ http://127.0.0.1:8080/
 
 Logging for kafka and kafka-ui is set to `error` only. Due to development
 purposes, both were producing too much information, little clean up required.
+
+[001]: https://brew.sh/
+[002]: https://orbstack.dev/

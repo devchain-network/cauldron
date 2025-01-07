@@ -112,6 +112,7 @@ func githubWebhookHandler(opts *githubHandlerOptions) fasthttp.RequestHandler {
 			Headers: []sarama.RecordHeader{
 				{Key: []byte("event"), Value: []byte(httpHeaders.Event)},
 				{Key: []byte("target-type"), Value: []byte(httpHeaders.TargetType)},
+				{Key: []byte("target-id"), Value: []byte(strconv.FormatUint(httpHeaders.TargetID, 10))},
 				{Key: []byte("hook-id"), Value: []byte(strconv.FormatUint(httpHeaders.HookID, 10))},
 				{Key: []byte("content-type"), Value: []byte("application/json")},
 			},
