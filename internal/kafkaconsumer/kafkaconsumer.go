@@ -1,17 +1,22 @@
 package kafkaconsumer
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/devchain-network/cauldron/internal/cerrors"
+	"github.com/devchain-network/cauldron/internal/storage"
+	"github.com/go-playground/webhooks/v6/github"
+	"github.com/google/uuid"
 	"github.com/vigo/getenv"
 )
 
@@ -53,6 +58,7 @@ var _ KafkaConsumer = (*Consumer)(nil) // compile time proof
 // Consumer represents kafa consumer setup.
 type Consumer struct {
 	Logger       *slog.Logger
+	Storage      storage.Storer
 	Topic        string
 	Brokers      []string
 	DialTimeout  time.Duration
@@ -172,7 +178,97 @@ func (c Consumer) worker(id int, messages <-chan *sarama.ConsumerMessage, wg *sy
 			"partition", msg.Partition,
 		)
 
-		// process message here...
+		deliveryID, err := uuid.Parse(string(msg.Key))
+		if err != nil {
+			c.Logger.Error("deliveryID error", "error", err)
+
+			continue
+		}
+
+		targetID, err := strconv.ParseUint(string(msg.Headers[2].Value), 10, 64)
+		if err != nil {
+			c.Logger.Error("targetID error", "error", err)
+
+			continue
+		}
+
+		hookID, err := strconv.ParseUint(string(msg.Headers[3].Value), 10, 64)
+		if err != nil {
+			c.Logger.Error("hookID error", "error", err)
+
+			continue
+		}
+
+		target := string(msg.Headers[1].Value)
+		event := github.Event(string(msg.Headers[0].Value))
+		offset := msg.Offset
+		partition := msg.Partition
+
+		// var webhookPayload []byte
+
+		// github.IssuesEvent,
+		// github.IssueCommentEvent,
+		// github.CreateEvent,
+		// github.DeleteEvent,
+		// github.PushEvent,
+
+		var payload any
+
+		switch event { //nolint:exhaustive
+		case github.IssuesEvent:
+			var pl github.IssuesPayload
+			if err = json.Unmarshal(msg.Value, &pl); err != nil {
+				c.Logger.Error("github.IssuesPayload error", "error", err)
+
+				continue
+			}
+			payload = pl
+		case github.IssueCommentEvent:
+			var pl github.IssueCommentPayload
+			if err = json.Unmarshal(msg.Value, &pl); err != nil {
+				c.Logger.Error("github.IssueCommentPayload error", "error", err)
+
+				continue
+			}
+			payload = pl
+		}
+
+		var userID int64
+		var userLogin string
+
+		fmt.Println("-----------------------------------------")
+		switch payload := payload.(type) {
+		case github.IssuesPayload:
+			fmt.Printf("%+v\n", payload)
+			userID = payload.Sender.ID
+			userLogin = payload.Sender.Login
+		case github.IssueCommentPayload:
+			fmt.Printf("%+v\n", payload)
+			userID = payload.Sender.ID
+			userLogin = payload.Sender.Login
+		}
+		fmt.Println("-----------------------------------------")
+
+		dbPayload := storage.GitHubWebhook{
+			DeliveryID: deliveryID,
+			Event:      event,
+			Target:     target,
+			TargetID:   targetID,
+			HookID:     hookID,
+			Offset:     offset,
+			Partition:  partition,
+			UserID:     userID,
+			UserLogin:  userLogin,
+			Payload:    payload,
+		}
+
+		if err = c.Storage.GitHubStore(&dbPayload); err != nil {
+			c.Logger.Error("kafkaconsumer.worker Store error", "error", err)
+
+			continue
+		}
+
+		// fmt.Printf("dbPayload:\n%+v\n", dbPayload)
 	}
 }
 
@@ -280,6 +376,18 @@ func WithMaxRetries(i int) Option {
 	}
 }
 
+// WithStorage sets storage value.
+func WithStorage(st storage.Storer) Option {
+	return func(consumer *Consumer) error {
+		if st == nil {
+			return fmt.Errorf("kafkaconsumer.WithStorage error: [%w]", cerrors.ErrValueRequired)
+		}
+		consumer.Storage = st
+
+		return nil
+	}
+}
+
 // New instantiates new kafka consumer instance.
 func New(options ...Option) (*Consumer, error) {
 	consumer := new(Consumer)
@@ -292,6 +400,9 @@ func New(options ...Option) (*Consumer, error) {
 
 	if consumer.Logger == nil {
 		return nil, fmt.Errorf("kafkaconsumer.New consumer.Logger error: [%w]", cerrors.ErrValueRequired)
+	}
+	if consumer.Storage == nil {
+		return nil, fmt.Errorf("kafkaconsumer.New consumer.Pool error: [%w]", cerrors.ErrValueRequired)
 	}
 
 	if consumer.Topic == "" {

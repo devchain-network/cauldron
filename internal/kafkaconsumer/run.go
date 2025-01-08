@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/devchain-network/cauldron/internal/slogger"
+	"github.com/devchain-network/cauldron/internal/storage"
 	"github.com/vigo/getenv"
 )
 
@@ -34,13 +35,14 @@ func Run() error {
 		return fmt.Errorf("kafkaconsumer.Run slogger.New error: [%w]", err)
 	}
 
-	// ctx := context.Background()
-	// pgPool, err := db.New(ctx, *databaseURL)
-	// if err != nil {
-	// 	return fmt.Errorf("apiserver.Run db.New error: [%w]", err)
-	// }
-	// defer pgPool.Close()
-	fmt.Println("*databaseURL", *databaseURL)
+	db, err := storage.New(
+		storage.WithDSN(*databaseURL),
+		storage.WithLogger(logger),
+	)
+	if err != nil {
+		return fmt.Errorf("apiserver.Run storage.New error: [%w]", err)
+	}
+	defer db.Pool.Close()
 
 	brokers := TCPAddrs(*brokersList).List()
 
@@ -54,6 +56,7 @@ func Run() error {
 		WithWriteTimeout(*writeTimeout),
 		WithBackoff(*backoff),
 		WithMaxRetries(*maxRetries),
+		WithStorage(db),
 	)
 	if err != nil {
 		return fmt.Errorf("kafkaconsumer.Run kafkaconsumer.New error: [%w]", err)
