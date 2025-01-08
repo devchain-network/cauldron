@@ -35,6 +35,13 @@ func (t TCPAddrs) List() []string {
 	return addrs
 }
 
+// KafkaTopicIdentifier represents custom type.
+type KafkaTopicIdentifier string
+
+func (s KafkaTopicIdentifier) String() string {
+	return string(s)
+}
+
 // constants.
 const (
 	DefaultKafkaBrokers = "127.0.0.1:9094"
@@ -46,6 +53,9 @@ const (
 
 	DefaultKafkaConsumerBackoff    = 2 * time.Second
 	DefaultKafkaConsumerMaxRetries = 10
+
+	KafkaTopicIdentifierGitHub KafkaTopicIdentifier = "github"
+	KafkaTopicIdentifierGitLab KafkaTopicIdentifier = "gitlab"
 )
 
 // KafkaConsumer defines kafka consumer behaviours.
@@ -157,118 +167,121 @@ func (c Consumer) getConfig() *sarama.Config {
 	return config
 }
 
+func (c Consumer) storeGitHubMessage(msg *sarama.ConsumerMessage) error {
+	deliveryID, err := uuid.Parse(string(msg.Key))
+	if err != nil {
+		return fmt.Errorf("kafkaconsumer.storeGitHubMessage deliveryID error: [%w]", err)
+	}
+
+	targetID, err := strconv.ParseUint(string(msg.Headers[2].Value), 10, 64)
+	if err != nil {
+		return fmt.Errorf("kafkaconsumer.storeGitHubMessage targetID error: [%w]", err)
+	}
+
+	hookID, err := strconv.ParseUint(string(msg.Headers[3].Value), 10, 64)
+	if err != nil {
+		return fmt.Errorf("kafkaconsumer.storeGitHubMessage hookID error: [%w]", err)
+	}
+
+	target := string(msg.Headers[1].Value)
+	event := github.Event(string(msg.Headers[0].Value))
+	offset := msg.Offset
+	partition := msg.Partition
+
+	var payload any
+
+	switch event { //nolint:exhaustive
+	case github.IssuesEvent:
+		var pl github.IssuesPayload
+		if err = json.Unmarshal(msg.Value, &pl); err != nil {
+			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.IssuesPayload error: [%w]", err)
+		}
+		payload = pl
+	case github.IssueCommentEvent:
+		var pl github.IssueCommentPayload
+		if err = json.Unmarshal(msg.Value, &pl); err != nil {
+			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.IssueCommentPayload error: [%w]", err)
+		}
+		payload = pl
+	case github.CreateEvent:
+		var pl github.CreatePayload
+		if err = json.Unmarshal(msg.Value, &pl); err != nil {
+			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.CreatePayload error: [%w]", err)
+		}
+		payload = pl
+	case github.DeleteEvent:
+		var pl github.DeletePayload
+		if err = json.Unmarshal(msg.Value, &pl); err != nil {
+			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.DeletePayload error: [%w]", err)
+		}
+		payload = pl
+	case github.PushEvent:
+		var pl github.PushPayload
+		if err = json.Unmarshal(msg.Value, &pl); err != nil {
+			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.PushPayload error: [%w]", err)
+		}
+		payload = pl
+	}
+
+	var userID int64
+	var userLogin string
+
+	switch payload := payload.(type) {
+	case github.IssuesPayload:
+		userID = payload.Sender.ID
+		userLogin = payload.Sender.Login
+	case github.IssueCommentPayload:
+		userID = payload.Sender.ID
+		userLogin = payload.Sender.Login
+	case github.CreatePayload:
+		userID = payload.Sender.ID
+		userLogin = payload.Sender.Login
+	case github.DeletePayload:
+		userID = payload.Sender.ID
+		userLogin = payload.Sender.Login
+	case github.PushPayload:
+		userID = payload.Sender.ID
+		userLogin = payload.Sender.Login
+	}
+
+	storagePayload := storage.GitHubWebhook{
+		DeliveryID: deliveryID,
+		Event:      event,
+		Target:     target,
+		TargetID:   targetID,
+		HookID:     hookID,
+		Offset:     offset,
+		Partition:  partition,
+		UserID:     userID,
+		UserLogin:  userLogin,
+		Payload:    payload,
+	}
+
+	if err = c.Storage.GitHubStore(&storagePayload); err != nil {
+		return fmt.Errorf("kafkaconsumer.storeGitHubMessage Storage.GitHubStore error: [%w]", err)
+	}
+
+	return nil
+}
+
 func (c Consumer) worker(id int, messages <-chan *sarama.ConsumerMessage, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for msg := range messages {
-		for _, header := range msg.Headers {
-			c.Logger.Info(
-				"header",
-				"key", string(header.Key),
-				"value", string(header.Value),
-			)
-		}
-
-		c.Logger.Info(
-			"received",
-			"worker id", id,
-			"key", string(msg.Key),
-			"value", string(msg.Value),
-			"offset", msg.Offset,
-			"partition", msg.Partition,
-		)
-
-		deliveryID, err := uuid.Parse(string(msg.Key))
-		if err != nil {
-			c.Logger.Error("deliveryID error", "error", err)
-
-			continue
-		}
-
-		targetID, err := strconv.ParseUint(string(msg.Headers[2].Value), 10, 64)
-		if err != nil {
-			c.Logger.Error("targetID error", "error", err)
-
-			continue
-		}
-
-		hookID, err := strconv.ParseUint(string(msg.Headers[3].Value), 10, 64)
-		if err != nil {
-			c.Logger.Error("hookID error", "error", err)
-
-			continue
-		}
-
-		target := string(msg.Headers[1].Value)
-		event := github.Event(string(msg.Headers[0].Value))
-		offset := msg.Offset
-		partition := msg.Partition
-
-		// var webhookPayload []byte
-
-		// github.IssuesEvent,
-		// github.IssueCommentEvent,
-		// github.CreateEvent,
-		// github.DeleteEvent,
-		// github.PushEvent,
-
-		var payload any
-
-		switch event { //nolint:exhaustive
-		case github.IssuesEvent:
-			var pl github.IssuesPayload
-			if err = json.Unmarshal(msg.Value, &pl); err != nil {
-				c.Logger.Error("github.IssuesPayload error", "error", err)
+		switch KafkaTopicIdentifier(c.Topic) {
+		case KafkaTopicIdentifierGitHub:
+			if err := c.storeGitHubMessage(msg); err != nil {
+				c.Logger.Error("store github message error", "error", err, "worker id", id)
 
 				continue
 			}
-			payload = pl
-		case github.IssueCommentEvent:
-			var pl github.IssueCommentPayload
-			if err = json.Unmarshal(msg.Value, &pl); err != nil {
-				c.Logger.Error("github.IssueCommentPayload error", "error", err)
-
-				continue
-			}
-			payload = pl
+		case KafkaTopicIdentifierGitLab:
+			fmt.Println("parse GitLab kafka message")
+		default:
+			fmt.Println("unknown topic identifier")
 		}
 
-		var userID int64
-		var userLogin string
-
-		fmt.Println("-----------------------------------------")
-		switch payload := payload.(type) {
-		case github.IssuesPayload:
-			fmt.Printf("%+v\n", payload)
-			userID = payload.Sender.ID
-			userLogin = payload.Sender.Login
-		case github.IssueCommentPayload:
-			fmt.Printf("%+v\n", payload)
-			userID = payload.Sender.ID
-			userLogin = payload.Sender.Login
-		}
-		fmt.Println("-----------------------------------------")
-
-		dbPayload := storage.GitHubWebhook{
-			DeliveryID: deliveryID,
-			Event:      event,
-			Target:     target,
-			TargetID:   targetID,
-			HookID:     hookID,
-			Offset:     offset,
-			Partition:  partition,
-			UserID:     userID,
-			UserLogin:  userLogin,
-			Payload:    payload,
-		}
-
-		if err = c.Storage.GitHubStore(&dbPayload); err != nil {
-			c.Logger.Error("kafkaconsumer.worker Store error", "error", err)
-
-			continue
-		}
-
-		// fmt.Printf("dbPayload:\n%+v\n", dbPayload)
+		c.Logger.Info("github messages successfully stored to db", "worker id", id)
 	}
 }
 
