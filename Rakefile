@@ -112,3 +112,72 @@ namespace :docker do
 
   end
 end
+
+task :command_exists, [:command] do |_, args|
+  if `command -v #{args.command} > /dev/null 2>&1 && echo $?`.chomp.empty?
+    abort "'#{args.command}' command doesn't exists"
+  end
+end
+
+task :has_rubocop do
+  Rake::Task['command_exists'].invoke('rubocop')
+end
+task :has_go_migrate do
+  Rake::Task['command_exists'].invoke('migrate')
+end
+
+DATABASE_NAME = ENV['DATABASE_NAME'] || nil
+DATABASE_URL = ENV['DATABASE_URL'] || nil
+
+task :pg_running do
+  Rake::Task['command_exists'].invoke('pg_isready')
+  abort 'DATABASE_NAME is not set' if DATABASE_NAME.nil?
+  abort 'DATABASE_URL is not set' if DATABASE_URL.nil?
+  abort 'postgresql is not running' if `$(command -v pg_isready) > /dev/null 2>&1 && echo $?`.chomp.empty?
+end
+
+
+namespace :db do
+  desc 'init database'
+  task init: %i[pg_running confirm] do
+    unless `psql -Xqtl | cut -d \\| -f1 | grep -qw #{DATABASE_NAME} > /dev/null 2>&1 && echo $?`.chomp.empty?
+      abort "#{DATABASE_NAME} is already exists"
+    end
+    system %{ createdb "#{DATABASE_NAME}" -O "#{ENV.fetch('USER', nil)}" && echo "#{DATABASE_NAME} was created." }
+    $CHILD_STATUS&.exitstatus || 1
+  rescue Interrupt
+    0
+  end
+
+  desc 'run migrate up'
+  task migrate: [:has_go_migrate] do
+    system %{ migrate -database "#{DATABASE_URL}" -path "migrations" up }
+    $CHILD_STATUS&.exitstatus || 1
+  rescue Interrupt
+    0
+  end
+end
+
+namespace :rubocop do
+  desc 'lint ruby'
+  task lint: [:has_rubocop] do
+    system %{ rubocop -F }
+    $CHILD_STATUS&.exitstatus || 1
+  rescue Interrupt
+    0
+  end
+
+  desc 'lint ruby and autofix'
+  task autofix: [:has_rubocop] do
+    system %{ rubocop -A }
+    $CHILD_STATUS&.exitstatus || 1
+  rescue Interrupt
+    0
+  end
+end
+
+task :confirm do
+  puts 'are you sure? [y,N]'
+  input = $stdin.gets.chomp
+  abort unless input.downcase == 'y'
+end

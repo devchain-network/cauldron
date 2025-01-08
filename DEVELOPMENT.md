@@ -32,7 +32,9 @@ If you add `rake task` please use `robocop` for linting `Rakefile`:
 # use:
 # gem install --user-install bundler
 # to install. then;
-bundle config set --local path 'ruby-vendor/bundle' --local bin 'bin'
+gem update --system
+bundle config set --local path 'ruby-vendor/bundle'
+bundle config set --local bin 'bin'
 bundle
 ```
 
@@ -54,6 +56,8 @@ bundle
 | `KC_WRITE_TIMEOUT` | Transmit timeout used by broker | "`30s`" (seconds) |
 | `KC_BACKOFF` | Backoff value for retries | "`2s`" (seconds) |
 | `KC_MAX_RETRIES` | Maximum retry | `10` |
+| `DATABASE_NAME` | Name of your PostgreSQL database | `""` |
+| `DATABASE_URL` | PostgreSQL dsn | `""` |
 
 Example `.envrc`:
 
@@ -80,6 +84,10 @@ export KC_READ_TIMEOUT="30s"
 export KC_WRITE_TIMEOUT="30s"
 export KC_BACKOFF="2s"
 export KC_MAX_RETRIES="10"
+
+# database variables
+export DATABASE_NAME="devchain-webhook"
+export DATABASE_URL="postgres://localhost:5432/${DATABASE_NAME}?sslmode=disable&timezone=UTC"
 ```
 
 ## Clonse source for development
@@ -98,6 +106,8 @@ If `ruby` is installed or available on your machine, use `rake tasks`:
 ```bash
 rake -T
 
+rake db:init                       # init database
+rake db:migrate                    # run migrate up
 rake default                       # default task, runs server
 rake docker:build:github_consumer  # build github consumer
 rake docker:build:server           # build server
@@ -107,6 +117,8 @@ rake docker:compose:kafka:down     # stop the kafka and kafka-ui only
 rake docker:compose:kafka:up       # run the kafka and kafka-ui only
 rake docker:run:github_consumer    # run github consumer
 rake docker:run:server             # run server
+rake rubocop:autofix               # lint ruby and autofix
+rake rubocop:lint                  # lint ruby
 rake run:kafka:github:consumer     # run kafka github consumer
 rake run:server                    # run server
 ```
