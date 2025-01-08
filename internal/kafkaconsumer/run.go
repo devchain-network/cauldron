@@ -21,6 +21,7 @@ func Run() error {
 	writeTimeout := getenv.Duration("KC_WRITE_TIMEOUT", DefaultKafkaConsumerWriteTimeout)
 	backoff := getenv.Duration("KC_BACKOFF", DefaultKafkaConsumerBackoff)
 	maxRetries := getenv.Int("KC_MAX_RETRIES", DefaultKafkaConsumerMaxRetries)
+	databaseURL := getenv.String("DATABASE_URL", "")
 
 	if err := getenv.Parse(); err != nil {
 		return fmt.Errorf("kafkaconsumer.Run getenv.Parse error: [%w]", err)
@@ -32,6 +33,14 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("kafkaconsumer.Run slogger.New error: [%w]", err)
 	}
+
+	// ctx := context.Background()
+	// pgPool, err := db.New(ctx, *databaseURL)
+	// if err != nil {
+	// 	return fmt.Errorf("apiserver.Run db.New error: [%w]", err)
+	// }
+	// defer pgPool.Close()
+	fmt.Println("*databaseURL", *databaseURL)
 
 	brokers := TCPAddrs(*brokersList).List()
 
