@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/devchain-network/cauldron/internal/cerrors"
-	"github.com/go-playground/webhooks/v6/github"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -20,45 +18,17 @@ const (
 
 var _ Storer = (*Manager)(nil) // compile time proof
 
-// GitHubWebhook ...
-type GitHubWebhook struct {
-	Payload    any
-	Event      github.Event
-	Target     string
-	UserLogin  string
-	DeliveryID uuid.UUID
-	TargetID   uint64
-	HookID     uint64
-	UserID     int64
-	Offset     int64
-	Partition  int32
-}
-
-const githubWebhookQuery = `
-INSERT INTO github (
-	delivery_id, 
-	event, 
-	target, 
-	target_id, 
-	hook_id, 
-	user_login, 
-	user_id, 
-	"offset", 
-	partition, 
-	payload
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
-
-// GitHubStorer ...
+// GitHubStorer defines storage behaviours for github webhook.
 type GitHubStorer interface {
-	GitHubStore(payload *GitHubWebhook) error
+	GitHubStore(payload *GitHubWebhookData) error
 }
 
-// Storer defines storage behaviours.
+// Storer defines storage behaviours for different webhooks.
 type Storer interface {
 	GitHubStorer
 }
 
-// Manager ...
+// Manager represents database manager.
 type Manager struct {
 	logger     *slog.Logger
 	Pool       *pgxpool.Pool
@@ -70,8 +40,8 @@ type Manager struct {
 // Option represents option function type.
 type Option func(*Manager) error
 
-// GitHubStore ...
-func (m *Manager) GitHubStore(data *GitHubWebhook) error {
+// GitHubStore stores given github webhook data with extras to database.
+func (m *Manager) GitHubStore(data *GitHubWebhookData) error {
 	_, err := m.Pool.Exec(
 		context.Background(),
 		githubWebhookQuery,
