@@ -42,6 +42,7 @@ CREATE TYPE event_type AS ENUM (
     'repository',
     'repository_vulnerability_alert',
     'security_advisory',
+    'star',
     'status',
     'team',
     'team_add',

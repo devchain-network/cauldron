@@ -2,7 +2,6 @@ package apiserver
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -34,36 +33,6 @@ type GitHubWebhookRequestHeaders struct {
 	TargetID   uint64
 }
 
-// // ParseGitHubHTTPHeaders parses incoming http headers and returns required http headers.
-// func ParseGitHubHTTPHeaders(h http.Header) *GitHubWebhookRequestHeaders {
-// 	out := &GitHubWebhookRequestHeaders{
-// 		Event:      AnythingUnknown,
-// 		TargetType: AnythingUnknown,
-// 	}
-//
-// 	if val := h.Get("X-Github-Event"); val != "" {
-// 		out.Event = val
-// 	}
-//
-// 	if val, err := uuid.Parse(h.Get("X-Github-Delivery")); err == nil {
-// 		out.DeliveryID = val
-// 	}
-//
-// 	if val, err := strconv.ParseUint(h.Get("X-Github-Hook-Id"), 10, 64); err == nil {
-// 		out.HookID = val
-// 	}
-//
-// 	if val, err := strconv.ParseUint(h.Get("X-Github-Hook-Installation-Target-Id"), 10, 64); err == nil {
-// 		out.TargetID = val
-// 	}
-//
-// 	if val := h.Get("X-Github-Hook-Installation-Target-Type"); val != "" {
-// 		out.TargetType = val
-// 	}
-//
-// 	return out
-// }
-
 func githubWebhookHandler(opts *githubHandlerOptions) fasthttp.RequestHandler {
 	return func(ctx *fasthttp.RequestCtx) {
 		var httpReq http.Request
@@ -81,10 +50,6 @@ func githubWebhookHandler(opts *githubHandlerOptions) fasthttp.RequestHandler {
 			return
 		}
 
-		if httpHeaders.event == UnsupportedStar {
-			fmt.Println("aaaaaaaaaaaaaaaaa")
-		}
-
 		listenEvents := []github.Event{
 			github.CommitCommentEvent,
 			github.CreateEvent,
@@ -98,6 +63,7 @@ func githubWebhookHandler(opts *githubHandlerOptions) fasthttp.RequestHandler {
 			github.PullRequestReviewEvent,
 			github.PushEvent,
 			github.ReleaseEvent,
+			github.StarEvent,
 			github.WatchEvent,
 		}
 		payload, err := opts.webhook.Parse(&httpReq, listenEvents...)

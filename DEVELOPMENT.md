@@ -108,6 +108,7 @@ rake -T
 
 rake db:init                       # init database
 rake db:migrate                    # run migrate up
+rake db:reset                      # reset database (drop and create)
 rake default                       # default task, runs server
 rake docker:build:github_consumer  # build github consumer
 rake docker:build:server           # build server

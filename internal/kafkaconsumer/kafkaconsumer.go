@@ -92,7 +92,8 @@ func (c Consumer) Start() error {
 
 	c.logger.Info("consuming messages from", "topic", c.topic)
 
-	messageChan := make(chan *sarama.ConsumerMessage, 10)
+	messageBufferSize := runtime.NumCPU() * 10
+	messageChan := make(chan *sarama.ConsumerMessage, messageBufferSize)
 	defer close(messageChan)
 
 	numWorkers := runtime.NumCPU()
@@ -245,6 +246,12 @@ func (c Consumer) storeGitHubMessage(msg *sarama.ConsumerMessage) error {
 			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.ReleasePayload error: [%w]", err)
 		}
 		payload = pl
+	case github.StarEvent:
+		var pl github.StarPayload
+		if err = json.Unmarshal(msg.Value, &pl); err != nil {
+			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.StarPayload error: [%w]", err)
+		}
+		payload = pl
 	case github.WatchEvent:
 		var pl github.WatchPayload
 		if err = json.Unmarshal(msg.Value, &pl); err != nil {
@@ -294,6 +301,9 @@ func (c Consumer) storeGitHubMessage(msg *sarama.ConsumerMessage) error {
 		userID = payload.Sender.ID
 		userLogin = payload.Sender.Login
 	case github.ReleasePayload:
+		userID = payload.Sender.ID
+		userLogin = payload.Sender.Login
+	case github.StarPayload:
 		userID = payload.Sender.ID
 		userLogin = payload.Sender.Login
 	case github.WatchPayload:

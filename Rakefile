@@ -138,6 +138,18 @@ end
 
 
 namespace :db do
+  desc 'reset database (drop and create)'
+  task reset: %i[pg_running confirm] do
+    system %{
+      dropdb --if-exists "#{DATABASE_NAME}" &&
+      createdb "#{DATABASE_NAME}" -O "${USER}" &&
+      echo "#{DATABASE_NAME} was created"
+    }
+    $CHILD_STATUS&.exitstatus || 1
+  rescue Interrupt
+    0
+  end
+
   desc 'init database'
   task init: %i[pg_running confirm] do
     unless `psql -Xqtl | cut -d \\| -f1 | grep -qw #{DATABASE_NAME} > /dev/null 2>&1 && echo $?`.chomp.empty?
