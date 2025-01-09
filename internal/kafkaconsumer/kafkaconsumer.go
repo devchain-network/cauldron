@@ -1,6 +1,7 @@
 package kafkaconsumer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -87,6 +88,9 @@ func (c Consumer) Start() error {
 	}
 	defer func() { _ = partitionConsumer.Close() }()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt)
 
@@ -94,7 +98,6 @@ func (c Consumer) Start() error {
 
 	messageBufferSize := runtime.NumCPU() * 10
 	messageChan := make(chan *sarama.ConsumerMessage, messageBufferSize)
-	defer close(messageChan)
 
 	numWorkers := runtime.NumCPU()
 	c.logger.Info("starting workers", "count", numWorkers)
@@ -102,10 +105,20 @@ func (c Consumer) Start() error {
 	var wg sync.WaitGroup
 	for i := range numWorkers {
 		wg.Add(1)
-		go c.worker(i, messageChan, &wg)
+		go func() {
+			defer wg.Done()
+			c.worker(i, messageChan)
+		}()
 	}
 
 	go func() {
+		<-signals
+		cancel()
+	}()
+
+	go func() {
+		defer close(messageChan)
+
 		for {
 			select {
 			case msg := <-partitionConsumer.Messages():
@@ -114,7 +127,7 @@ func (c Consumer) Start() error {
 				}
 			case err := <-partitionConsumer.Errors():
 				c.logger.Error("partition consumer error", "error", err)
-			case <-signals:
+			case <-ctx.Done():
 				c.logger.Info("shutting down message producer")
 
 				return
@@ -331,9 +344,7 @@ func (c Consumer) storeGitHubMessage(msg *sarama.ConsumerMessage) error {
 	return nil
 }
 
-func (c Consumer) worker(id int, messages <-chan *sarama.ConsumerMessage, wg *sync.WaitGroup) {
-	defer wg.Done()
-
+func (c Consumer) worker(id int, messages <-chan *sarama.ConsumerMessage) {
 	for msg := range messages {
 		switch KafkaTopicIdentifier(c.topic) {
 		case KafkaTopicIdentifierGitHub:
