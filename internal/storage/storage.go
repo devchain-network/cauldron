@@ -154,12 +154,9 @@ func New(options ...Option) (*Manager, error) {
 
 		manager.logger.Error(
 			"can not ping database",
-			"error",
-			pingErr,
-			"retry",
-			fmt.Sprintf("%d/%d", i, manager.maxRetries),
-			"backoff",
-			backOff.String(),
+			"error", pingErr,
+			"retry", fmt.Sprintf("%d/%d", i, manager.maxRetries),
+			"backoff", backOff.String(),
 		)
 		time.Sleep(backOff)
 		backOff *= 2

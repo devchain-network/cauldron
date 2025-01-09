@@ -125,7 +125,7 @@ func githubWebhookHandler(opts *githubHandlerOptions) fasthttp.RequestHandler {
 			opts.logger.Warn("message queue is full, dropping", "message", message)
 		}
 
-		opts.logger.Info("github webhook success")
+		opts.logger.Info("github webhook received successfully")
 		ctx.SetStatusCode(fasthttp.StatusAccepted)
 	}
 }
