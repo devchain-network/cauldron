@@ -161,16 +161,13 @@ func (c Consumer) storeGitHubMessage(msg *sarama.ConsumerMessage) error {
 	var payload any
 
 	switch event { //nolint:exhaustive
-	case github.IssuesEvent:
-		var pl github.IssuesPayload
+	case github.CommitCommentEvent:
+		var pl github.CommitCommentPayload
 		if err = json.Unmarshal(msg.Value, &pl); err != nil {
-			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.IssuesPayload error: [%w]", err)
-		}
-		payload = pl
-	case github.IssueCommentEvent:
-		var pl github.IssueCommentPayload
-		if err = json.Unmarshal(msg.Value, &pl); err != nil {
-			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.IssueCommentPayload error: [%w]", err)
+			return fmt.Errorf(
+				"kafkaconsumer.storeGitHubMessage github.CommitCommentPayload error: [%w]",
+				err,
+			)
 		}
 		payload = pl
 	case github.CreateEvent:
@@ -185,10 +182,76 @@ func (c Consumer) storeGitHubMessage(msg *sarama.ConsumerMessage) error {
 			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.DeletePayload error: [%w]", err)
 		}
 		payload = pl
+	case github.ForkEvent:
+		var pl github.ForkPayload
+		if err = json.Unmarshal(msg.Value, &pl); err != nil {
+			return fmt.Errorf(
+				"kafkaconsumer.storeGitHubMessage github.ForkPayload error: [%w]",
+				err,
+			)
+		}
+		payload = pl
+	case github.GollumEvent:
+		var pl github.GollumPayload
+		if err = json.Unmarshal(msg.Value, &pl); err != nil {
+			return fmt.Errorf(
+				"kafkaconsumer.storeGitHubMessage github.GollumPayload error: [%w]",
+				err,
+			)
+		}
+		payload = pl
+	case github.IssueCommentEvent:
+		var pl github.IssueCommentPayload
+		if err = json.Unmarshal(msg.Value, &pl); err != nil {
+			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.IssueCommentPayload error: [%w]", err)
+		}
+		payload = pl
+	case github.IssuesEvent:
+		var pl github.IssuesPayload
+		if err = json.Unmarshal(msg.Value, &pl); err != nil {
+			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.IssuesPayload error: [%w]", err)
+		}
+		payload = pl
+	case github.PullRequestEvent:
+		var pl github.PullRequestPayload
+		if err = json.Unmarshal(msg.Value, &pl); err != nil {
+			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.PullRequestPayload error: [%w]", err)
+		}
+		payload = pl
+	case github.PullRequestReviewCommentEvent:
+		var pl github.PullRequestReviewCommentPayload
+		if err = json.Unmarshal(msg.Value, &pl); err != nil {
+			return fmt.Errorf(
+				"kafkaconsumer.storeGitHubMessage github.PullRequestReviewCommentPayload error: [%w]",
+				err,
+			)
+		}
+		payload = pl
+	case github.PullRequestReviewEvent:
+		var pl github.PullRequestReviewPayload
+		if err = json.Unmarshal(msg.Value, &pl); err != nil {
+			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.PullRequestReviewPayload error: [%w]", err)
+		}
+		payload = pl
 	case github.PushEvent:
 		var pl github.PushPayload
 		if err = json.Unmarshal(msg.Value, &pl); err != nil {
 			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.PushPayload error: [%w]", err)
+		}
+		payload = pl
+	case github.ReleaseEvent:
+		var pl github.ReleasePayload
+		if err = json.Unmarshal(msg.Value, &pl); err != nil {
+			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.ReleasePayload error: [%w]", err)
+		}
+		payload = pl
+	case github.WatchEvent:
+		var pl github.WatchPayload
+		if err = json.Unmarshal(msg.Value, &pl); err != nil {
+			return fmt.Errorf(
+				"kafkaconsumer.storeGitHubMessage github.WatchPayload error: [%w]",
+				err,
+			)
 		}
 		payload = pl
 	}
@@ -197,10 +260,7 @@ func (c Consumer) storeGitHubMessage(msg *sarama.ConsumerMessage) error {
 	var userLogin string
 
 	switch payload := payload.(type) {
-	case github.IssuesPayload:
-		userID = payload.Sender.ID
-		userLogin = payload.Sender.Login
-	case github.IssueCommentPayload:
+	case github.CommitCommentPayload:
 		userID = payload.Sender.ID
 		userLogin = payload.Sender.Login
 	case github.CreatePayload:
@@ -209,7 +269,34 @@ func (c Consumer) storeGitHubMessage(msg *sarama.ConsumerMessage) error {
 	case github.DeletePayload:
 		userID = payload.Sender.ID
 		userLogin = payload.Sender.Login
+	case github.ForkPayload:
+		userID = payload.Sender.ID
+		userLogin = payload.Sender.Login
+	case github.GollumPayload:
+		userID = payload.Sender.ID
+		userLogin = payload.Sender.Login
+	case github.IssueCommentPayload:
+		userID = payload.Sender.ID
+		userLogin = payload.Sender.Login
+	case github.IssuesPayload:
+		userID = payload.Sender.ID
+		userLogin = payload.Sender.Login
+	case github.PullRequestPayload:
+		userID = payload.Sender.ID
+		userLogin = payload.Sender.Login
+	case github.PullRequestReviewCommentPayload:
+		userID = payload.Sender.ID
+		userLogin = payload.Sender.Login
+	case github.PullRequestReviewPayload:
+		userID = payload.Sender.ID
+		userLogin = payload.Sender.Login
 	case github.PushPayload:
+		userID = payload.Sender.ID
+		userLogin = payload.Sender.Login
+	case github.ReleasePayload:
+		userID = payload.Sender.ID
+		userLogin = payload.Sender.Login
+	case github.WatchPayload:
 		userID = payload.Sender.ID
 		userLogin = payload.Sender.Login
 	}

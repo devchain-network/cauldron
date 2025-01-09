@@ -5,12 +5,15 @@ import (
 	_ "embed"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/devchain-network/cauldron/internal/cerrors"
 	"github.com/go-playground/webhooks/v6/github"
+	"github.com/google/uuid"
 	"github.com/valyala/fasthttp"
 )
 
@@ -178,6 +181,43 @@ type githubHandlerOptions struct {
 	webhook *github.Webhook
 	httpHandlerOptions
 	topic string
+}
+
+type githubHTTPRequestHeaders struct {
+	event      string
+	targetType string
+	deliveryID uuid.UUID
+	hookID     uint64
+	targetID   uint64
+}
+
+func (githubHandlerOptions) parseGitHubWebhookHTTPRequestHeaders(h http.Header) *githubHTTPRequestHeaders {
+	parsed := &githubHTTPRequestHeaders{
+		event:      AnythingUnknown,
+		targetType: AnythingUnknown,
+	}
+
+	if val := h.Get("X-Github-Event"); val != "" {
+		parsed.event = val
+	}
+
+	if val, err := uuid.Parse(h.Get("X-Github-Delivery")); err == nil {
+		parsed.deliveryID = val
+	}
+
+	if val, err := strconv.ParseUint(h.Get("X-Github-Hook-Id"), 10, 64); err == nil {
+		parsed.hookID = val
+	}
+
+	if val, err := strconv.ParseUint(h.Get("X-Github-Hook-Installation-Target-Id"), 10, 64); err == nil {
+		parsed.targetID = val
+	}
+
+	if val := h.Get("X-Github-Hook-Installation-Target-Type"); val != "" {
+		parsed.targetType = val
+	}
+
+	return parsed
 }
 
 type methodHandler map[string]fasthttp.RequestHandler

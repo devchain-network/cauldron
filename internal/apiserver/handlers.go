@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -21,6 +22,7 @@ func healthCheckHandler(ctx *fasthttp.RequestCtx) {
 // constants.
 const (
 	AnythingUnknown = "unknown"
+	UnsupportedStar = "star"
 )
 
 // GitHubWebhookRequestHeaders represents important http headers to fetch.
@@ -32,35 +34,35 @@ type GitHubWebhookRequestHeaders struct {
 	TargetID   uint64
 }
 
-// ParseGitHubHTTPHeaders parses incoming http headers and returns required http headers.
-func ParseGitHubHTTPHeaders(h http.Header) *GitHubWebhookRequestHeaders {
-	out := &GitHubWebhookRequestHeaders{
-		Event:      AnythingUnknown,
-		TargetType: AnythingUnknown,
-	}
-
-	if val := h.Get("X-Github-Event"); val != "" {
-		out.Event = val
-	}
-
-	if val, err := uuid.Parse(h.Get("X-Github-Delivery")); err == nil {
-		out.DeliveryID = val
-	}
-
-	if val, err := strconv.ParseUint(h.Get("X-Github-Hook-Id"), 10, 64); err == nil {
-		out.HookID = val
-	}
-
-	if val, err := strconv.ParseUint(h.Get("X-Github-Hook-Installation-Target-Id"), 10, 64); err == nil {
-		out.TargetID = val
-	}
-
-	if val := h.Get("X-Github-Hook-Installation-Target-Type"); val != "" {
-		out.TargetType = val
-	}
-
-	return out
-}
+// // ParseGitHubHTTPHeaders parses incoming http headers and returns required http headers.
+// func ParseGitHubHTTPHeaders(h http.Header) *GitHubWebhookRequestHeaders {
+// 	out := &GitHubWebhookRequestHeaders{
+// 		Event:      AnythingUnknown,
+// 		TargetType: AnythingUnknown,
+// 	}
+//
+// 	if val := h.Get("X-Github-Event"); val != "" {
+// 		out.Event = val
+// 	}
+//
+// 	if val, err := uuid.Parse(h.Get("X-Github-Delivery")); err == nil {
+// 		out.DeliveryID = val
+// 	}
+//
+// 	if val, err := strconv.ParseUint(h.Get("X-Github-Hook-Id"), 10, 64); err == nil {
+// 		out.HookID = val
+// 	}
+//
+// 	if val, err := strconv.ParseUint(h.Get("X-Github-Hook-Installation-Target-Id"), 10, 64); err == nil {
+// 		out.TargetID = val
+// 	}
+//
+// 	if val := h.Get("X-Github-Hook-Installation-Target-Type"); val != "" {
+// 		out.TargetType = val
+// 	}
+//
+// 	return out
+// }
 
 func githubWebhookHandler(opts *githubHandlerOptions) fasthttp.RequestHandler {
 	return func(ctx *fasthttp.RequestCtx) {
@@ -71,30 +73,44 @@ func githubWebhookHandler(opts *githubHandlerOptions) fasthttp.RequestHandler {
 			return
 		}
 
-		httpHeaders := ParseGitHubHTTPHeaders(httpReq.Header)
-		if httpHeaders.DeliveryID == uuid.Nil {
+		httpHeaders := opts.parseGitHubWebhookHTTPRequestHeaders(httpReq.Header)
+		if httpHeaders.deliveryID == uuid.Nil {
 			opts.logger.Error("invalid X-Github-Delivery")
 			ctx.SetStatusCode(fasthttp.StatusBadRequest)
 
 			return
 		}
 
+		if httpHeaders.event == UnsupportedStar {
+			fmt.Println("aaaaaaaaaaaaaaaaa")
+		}
+
 		listenEvents := []github.Event{
-			github.IssuesEvent,
-			github.IssueCommentEvent,
+			github.CommitCommentEvent,
 			github.CreateEvent,
 			github.DeleteEvent,
+			github.ForkEvent,
+			github.GollumEvent,
+			github.IssueCommentEvent,
+			github.IssuesEvent,
+			github.PullRequestEvent,
+			github.PullRequestReviewCommentEvent,
+			github.PullRequestReviewEvent,
 			github.PushEvent,
+			github.ReleaseEvent,
+			github.WatchEvent,
 		}
 		payload, err := opts.webhook.Parse(&httpReq, listenEvents...)
 		if err != nil {
+			opts.logger.Info("webhook parse error", "error", err)
+
 			return
 		}
 
 		opts.logger.Info(
 			"webhook received",
-			"event", httpHeaders.Event,
-			"target type", httpHeaders.TargetType,
+			"event", httpHeaders.event,
+			"target type", httpHeaders.targetType,
 		)
 
 		payloadB, errm := json.Marshal(payload)
@@ -104,16 +120,16 @@ func githubWebhookHandler(opts *githubHandlerOptions) fasthttp.RequestHandler {
 			return
 		}
 
-		messageKey := httpHeaders.DeliveryID.String()
+		messageKey := httpHeaders.deliveryID.String()
 		message := &sarama.ProducerMessage{
 			Topic: opts.topic,
 			Key:   sarama.StringEncoder(messageKey),
 			Value: sarama.ByteEncoder(payloadB),
 			Headers: []sarama.RecordHeader{
-				{Key: []byte("event"), Value: []byte(httpHeaders.Event)},
-				{Key: []byte("target-type"), Value: []byte(httpHeaders.TargetType)},
-				{Key: []byte("target-id"), Value: []byte(strconv.FormatUint(httpHeaders.TargetID, 10))},
-				{Key: []byte("hook-id"), Value: []byte(strconv.FormatUint(httpHeaders.HookID, 10))},
+				{Key: []byte("event"), Value: []byte(httpHeaders.event)},
+				{Key: []byte("target-type"), Value: []byte(httpHeaders.targetType)},
+				{Key: []byte("target-id"), Value: []byte(strconv.FormatUint(httpHeaders.targetID, 10))},
+				{Key: []byte("hook-id"), Value: []byte(strconv.FormatUint(httpHeaders.hookID, 10))},
 				{Key: []byte("content-type"), Value: []byte("application/json")},
 			},
 		}
