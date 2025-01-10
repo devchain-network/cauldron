@@ -1,11 +1,13 @@
 package apiserver
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
 
 	"github.com/IBM/sarama"
+	"github.com/devchain-network/cauldron/internal/cerrors"
 	"github.com/go-playground/webhooks/v6/github"
 	"github.com/google/uuid"
 )
@@ -81,4 +83,55 @@ func (githubHandlerOptions) parseGitHubWebhookHTTPRequestHeaders(h http.Header) 
 	}
 
 	return parsed
+}
+
+type handlerOption func(*httpHandlerOptions) error
+
+func handlerOptionsWithLogger(l *slog.Logger) handlerOption {
+	return func(ho *httpHandlerOptions) error {
+		if l == nil {
+			return fmt.Errorf("apiserver.handlerOptionsWithLogger error: [%w]", cerrors.ErrValueRequired)
+		}
+		ho.logger = l
+
+		return nil
+	}
+}
+
+func handlerOptionsWithKafkaProducer(kp sarama.AsyncProducer) handlerOption {
+	return func(ho *httpHandlerOptions) error {
+		if kp == nil {
+			return fmt.Errorf("apiserver.handlerOptionsWithKafkaProducer error: [%w]", cerrors.ErrValueRequired)
+		}
+		ho.kafkaProducer = kp
+
+		return nil
+	}
+}
+
+func handlerOptionsWithProducerMessageQueue(mq chan *sarama.ProducerMessage) handlerOption {
+	return func(ho *httpHandlerOptions) error {
+		if mq == nil {
+			return fmt.Errorf("apiserver.handlerOptionsWithProducerMessageQueue error: [%w]", cerrors.ErrValueRequired)
+		}
+		ho.producerMessageQueue = mq
+
+		return nil
+	}
+}
+
+func newHandlerOptions(options ...handlerOption) (*httpHandlerOptions, error) {
+	hopts := new(httpHandlerOptions)
+
+	for _, option := range options {
+		if err := option(hopts); err != nil {
+			return nil, fmt.Errorf("apiserver.newHandlerOptions option error: [%w]", err)
+		}
+	}
+
+	if hopts.logger == nil {
+		return nil, fmt.Errorf("apiserver.newHandlerOptions hopts.logger error: [%w]", cerrors.ErrValueRequired)
+	}
+
+	return hopts, nil
 }

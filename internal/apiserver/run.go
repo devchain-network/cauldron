@@ -76,13 +76,18 @@ func Run() error {
 
 	logger.Info("connected to kafka brokers", "addrs", kafkaBrokers)
 
-	commonHandlerOpts := httpHandlerOptions{
-		logger:               logger,
-		kafkaProducer:        kafkaProducer,
-		producerMessageQueue: make(chan *sarama.ProducerMessage, *producerMessageQueueSize),
+	producerMessageQueue := make(chan *sarama.ProducerMessage, *producerMessageQueueSize)
+	commonHandlerOpts, err := newHandlerOptions(
+		handlerOptionsWithLogger(logger),
+		handlerOptionsWithKafkaProducer(kafkaProducer),
+		handlerOptionsWithProducerMessageQueue(producerMessageQueue),
+	)
+	if err != nil {
+		return fmt.Errorf("apiserver.Run newHandlerOptions error: [%w]", err)
 	}
+
 	githubHandlerOpts := githubHandlerOptions{
-		httpHandlerOptions: commonHandlerOpts,
+		httpHandlerOptions: *commonHandlerOpts,
 		webhook:            githubWebhook,
 		topic:              *kafkaTopicGitHub,
 	}
