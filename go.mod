@@ -39,4 +39,4 @@ require (
 	golang.org/x/text v0.21.0 // indirect
 )
 
-replace github.com/go-playground/webhooks/v6 => /Users/vigo/Development/DevChain/forks/webhooks
+replace github.com/go-playground/webhooks/v6 => github.com/devchain-network/webhooks/v6 v6.0.0-20250110190819-cfa5365c0972
