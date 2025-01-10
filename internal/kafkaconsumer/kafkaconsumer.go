@@ -141,16 +141,6 @@ func (c Consumer) Start() error {
 	return nil
 }
 
-func (c Consumer) getConfig() *sarama.Config {
-	config := sarama.NewConfig()
-	config.Consumer.Return.Errors = true
-	config.Net.DialTimeout = c.dialTimeout
-	config.Net.ReadTimeout = c.readTimeout
-	config.Net.WriteTimeout = c.writeTimeout
-
-	return config
-}
-
 func (c Consumer) worker(workerID int, messages <-chan *sarama.ConsumerMessage) {
 	for msg := range messages {
 		switch KafkaTopicIdentifier(c.topic) {
@@ -168,6 +158,16 @@ func (c Consumer) worker(workerID int, messages <-chan *sarama.ConsumerMessage) 
 
 		c.logger.Info("github messages successfully stored to db", "worker id", workerID)
 	}
+}
+
+func (c Consumer) getConfig() *sarama.Config {
+	config := sarama.NewConfig()
+	config.Consumer.Return.Errors = true
+	config.Net.DialTimeout = c.dialTimeout
+	config.Net.ReadTimeout = c.readTimeout
+	config.Net.WriteTimeout = c.writeTimeout
+
+	return config
 }
 
 func (c Consumer) storeGitHubMessage(msg *sarama.ConsumerMessage) error {
