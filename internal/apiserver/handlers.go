@@ -13,13 +13,14 @@ import (
 	"github.com/valyala/fasthttp/fasthttpadaptor"
 )
 
-// healthCheckHandler handles "/healthz".
-func healthCheckHandler(ctx *fasthttp.RequestCtx) {
+// HealthCheckHandler handles health check functionality.
+func HealthCheckHandler(ctx *fasthttp.RequestCtx) {
 	ctx.SetStatusCode(fasthttp.StatusOK)
 	ctx.SetBodyString("OK")
 }
 
-func githubWebhookHandler(opts *githubhandleroptions.HTTPHandler) fasthttp.RequestHandler {
+// GitHubWebhookHandler handles GitHub webhooks.
+func GitHubWebhookHandler(opts *githubhandleroptions.HTTPHandler) fasthttp.RequestHandler {
 	return func(ctx *fasthttp.RequestCtx) {
 		var httpReq http.Request
 		if err := fasthttpadaptor.ConvertRequest(ctx, &httpReq, true); err != nil {

@@ -34,29 +34,30 @@ type HTTPServer interface {
 	Stop() error
 }
 
-type methodHandler map[string]fasthttp.RequestHandler
+// MethodHandler holds http method and http handler function information.
+type MethodHandler map[string]fasthttp.RequestHandler
 
 // Option represents option function type.
 type Option func(*Server) error
 
 // Server represents server configuration. Must implements HTTPServer interface.
 type Server struct {
-	logger           *slog.Logger
-	fastHTTP         *fasthttp.Server
-	handlers         map[string]methodHandler
-	listenAddr       string
-	kafkaGitHubTopic string
-	kafkaBrokers     []string
-	readTimeout      time.Duration
-	writeTimeout     time.Duration
-	idleTimeout      time.Duration
+	Logger           *slog.Logger
+	FastHTTP         *fasthttp.Server
+	Handlers         map[string]MethodHandler
+	ListenAddr       string
+	KafkaGitHubTopic string
+	KafkaBrokers     []string
+	ReadTimeout      time.Duration
+	WriteTimeout     time.Duration
+	IdleTimeout      time.Duration
 }
 
 // Start starts the fast http server.
 func (s *Server) Start() error {
-	s.logger.Info("start listening at", "addr", s.listenAddr, "version", serverVersion)
-	if err := s.fastHTTP.ListenAndServe(s.listenAddr); err != nil {
-		return fmt.Errorf("apiserver.Server.Start FastHTTP.ListenAndServe error: [%w]", err)
+	s.Logger.Info("start listening at", "addr", s.ListenAddr, "version", serverVersion)
+	if err := s.FastHTTP.ListenAndServe(s.ListenAddr); err != nil {
+		return fmt.Errorf("apiserver.Start FastHTTP.ListenAndServe error: [%w]", err)
 	}
 
 	return nil
@@ -64,11 +65,11 @@ func (s *Server) Start() error {
 
 // Stop stops the fast http server.
 func (s *Server) Stop() error {
-	s.logger.Info("shutting down the server")
-	if err := s.fastHTTP.ShutdownWithContext(context.Background()); err != nil {
-		s.logger.Error("server shutdown error", "error", err)
+	s.Logger.Info("shutting down the server")
+	if err := s.FastHTTP.ShutdownWithContext(context.Background()); err != nil {
+		s.Logger.Error("server shutdown error", "error", err)
 
-		return fmt.Errorf("apiserver.Server.Stop FastHTTP.ShutdownWithContext error: [%w]", err)
+		return fmt.Errorf("apiserver.Stop FastHTTP.ShutdownWithContext error: [%w]", err)
 	}
 
 	return nil
@@ -78,9 +79,9 @@ func (s *Server) Stop() error {
 func WithLogger(l *slog.Logger) Option {
 	return func(server *Server) error {
 		if l == nil {
-			return fmt.Errorf("apiserver.WithLogger 'l' logger error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("apiserver.WithLogger server.Logger error: [%w]", cerrors.ErrValueRequired)
 		}
-		server.logger = l
+		server.Logger = l
 
 		return nil
 	}
@@ -90,19 +91,19 @@ func WithLogger(l *slog.Logger) Option {
 func WithHTTPHandler(method, path string, handler fasthttp.RequestHandler) Option {
 	return func(server *Server) error {
 		if method == "" {
-			return fmt.Errorf("apiserver.WithHTTPHandler 'method' error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("apiserver.WithHTTPHandler method error: [%w]", cerrors.ErrValueRequired)
 		}
 		if path == "" {
-			return fmt.Errorf("apiserver.WithHTTPHandler 'path' error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("apiserver.WithHTTPHandler path error: [%w]", cerrors.ErrValueRequired)
 		}
 		if handler == nil {
-			return fmt.Errorf("apiserver.WithHTTPHandler 'http' handler error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("apiserver.WithHTTPHandler http handler error: [%w]", cerrors.ErrValueRequired)
 		}
 
-		if server.handlers == nil {
-			server.handlers = make(map[string]methodHandler)
+		if server.Handlers == nil {
+			server.Handlers = make(map[string]MethodHandler)
 		}
-		server.handlers[path] = methodHandler{method: handler}
+		server.Handlers[path] = MethodHandler{method: handler}
 
 		return nil
 	}
@@ -112,9 +113,9 @@ func WithHTTPHandler(method, path string, handler fasthttp.RequestHandler) Optio
 func WithListenAddr(addr string) Option {
 	return func(server *Server) error {
 		if addr == "" {
-			return fmt.Errorf("apiserver.WithListenAddr listen 'addr' error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("apiserver.WithListenAddr server.ListenAddr error: [%w]", cerrors.ErrValueRequired)
 		}
-		server.listenAddr = addr
+		server.ListenAddr = addr
 
 		return nil
 	}
@@ -123,7 +124,7 @@ func WithListenAddr(addr string) Option {
 // WithReadTimeout sets read timeout.
 func WithReadTimeout(d time.Duration) Option {
 	return func(server *Server) error {
-		server.readTimeout = d
+		server.ReadTimeout = d
 
 		return nil
 	}
@@ -132,7 +133,7 @@ func WithReadTimeout(d time.Duration) Option {
 // WithWriteTimeout sets write timeout.
 func WithWriteTimeout(d time.Duration) Option {
 	return func(server *Server) error {
-		server.writeTimeout = d
+		server.WriteTimeout = d
 
 		return nil
 	}
@@ -141,7 +142,7 @@ func WithWriteTimeout(d time.Duration) Option {
 // WithIdleTimeout sets idle timeout.
 func WithIdleTimeout(d time.Duration) Option {
 	return func(server *Server) error {
-		server.idleTimeout = d
+		server.IdleTimeout = d
 
 		return nil
 	}
@@ -151,11 +152,11 @@ func WithIdleTimeout(d time.Duration) Option {
 func WithKafkaBrokers(brokers []string) Option {
 	return func(server *Server) error {
 		if brokers == nil {
-			return fmt.Errorf("apiserver.WithKafkaBrokers 'brokers' error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("apiserver.WithKafkaBrokers server.kafkaBrokers error: [%w]", cerrors.ErrValueRequired)
 		}
 
-		server.kafkaBrokers = make([]string, len(brokers))
-		copy(server.kafkaBrokers, brokers)
+		server.KafkaBrokers = make([]string, len(brokers))
+		copy(server.KafkaBrokers, brokers)
 
 		return nil
 	}
@@ -166,11 +167,11 @@ func WithKafkaGitHubTopic(s string) Option {
 	return func(server *Server) error {
 		if s == "" {
 			return fmt.Errorf(
-				"apiserver.WithKafkaGitHubTopic 'skpDefaultGitHubTopicub topic error: [%w]",
+				"apiserver.WithKafkaGitHubTopic server.KafkaGitHubTopic error: [%w]",
 				cerrors.ErrValueRequired,
 			)
 		}
-		server.kafkaGitHubTopic = s
+		server.KafkaGitHubTopic = s
 
 		return nil
 	}
@@ -179,10 +180,10 @@ func WithKafkaGitHubTopic(s string) Option {
 // New instantiates new api server.
 func New(options ...Option) (*Server, error) {
 	server := new(Server)
-	server.readTimeout = serverDefaultReadTimeout
-	server.writeTimeout = serverDefaultWriteTimeout
-	server.idleTimeout = serverDefaultIdleTimeout
-	server.listenAddr = serverDefaultListenAddr
+	server.ReadTimeout = serverDefaultReadTimeout
+	server.WriteTimeout = serverDefaultWriteTimeout
+	server.IdleTimeout = serverDefaultIdleTimeout
+	server.ListenAddr = serverDefaultListenAddr
 
 	for _, option := range options {
 		if err := option(server); err != nil {
@@ -190,16 +191,16 @@ func New(options ...Option) (*Server, error) {
 		}
 	}
 
-	if server.logger == nil {
+	if server.Logger == nil {
 		return nil, fmt.Errorf("apiserver.New server.Logger error: [%w]", cerrors.ErrValueRequired)
 	}
 
-	if server.handlers == nil {
+	if server.Handlers == nil {
 		return nil, fmt.Errorf("apiserver.New server.Handlers error: [%w]", cerrors.ErrValueRequired)
 	}
 
 	httpRouter := func(ctx *fasthttp.RequestCtx) {
-		methodsHandlers, ok := server.handlers[string(ctx.Path())]
+		methodsHandlers, ok := server.Handlers[string(ctx.Path())]
 		if !ok {
 			ctx.NotFound()
 
@@ -217,11 +218,11 @@ func New(options ...Option) (*Server, error) {
 		}
 	}
 
-	server.fastHTTP = &fasthttp.Server{
+	server.FastHTTP = &fasthttp.Server{
 		Handler:         httpRouter,
-		ReadTimeout:     server.readTimeout,
-		WriteTimeout:    server.writeTimeout,
-		IdleTimeout:     server.idleTimeout,
+		ReadTimeout:     server.ReadTimeout,
+		WriteTimeout:    server.WriteTimeout,
+		IdleTimeout:     server.IdleTimeout,
 		CloseOnShutdown: true,
 	}
 

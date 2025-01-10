@@ -110,8 +110,8 @@ func Run() error {
 		WithListenAddr(*listenAddr),
 		WithKafkaGitHubTopic(*kafkaTopicGitHub),
 		WithKafkaBrokers(kafkaBrokers),
-		WithHTTPHandler(fasthttp.MethodGet, "/healthz", healthCheckHandler),
-		WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/github", githubWebhookHandler(githubHandlerOptions)),
+		WithHTTPHandler(fasthttp.MethodGet, "/healthz", HealthCheckHandler),
+		WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/github", GitHubWebhookHandler(githubHandlerOptions)),
 	)
 	if err != nil {
 		return fmt.Errorf("apiserver.Run apiserver.New error: [%w]", err)
