@@ -55,7 +55,11 @@ func GitHubWebhookHandler(opts *githubhandleroptions.HTTPHandler) fasthttp.Reque
 		}
 		payload, err := opts.Webhook.Parse(&httpReq, listenEvents...)
 		if err != nil {
-			opts.CommonHandler.Logger.Info("github webhook parse error", "error", err)
+			opts.CommonHandler.Logger.Info(
+				"github webhook parse error",
+				"error", err,
+				"event", httpHeaders.Event,
+			)
 
 			return
 		}
