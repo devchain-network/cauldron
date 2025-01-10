@@ -43,11 +43,6 @@ func Run() error {
 		return fmt.Errorf("apiserver.Run storage.New error: [%w]", err)
 	}
 	defer func() {
-		// stat := db.Pool.Stat()
-		// fmt.Println("Pool", db.Pool)
-		// fmt.Println("AcquireCount()", stat.AcquireCount())
-		// fmt.Println("AcquiredConns()", stat.AcquiredConns())
-		// fmt.Println("TotalConns()", stat.TotalConns())
 		logger.Info("closing pfx pool")
 		db.Pool.Close()
 	}()
