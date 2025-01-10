@@ -14,16 +14,16 @@ import (
 //go:embed VERSION
 var serverVersion string
 
-// constants.
+// default values.
 const (
 	serverDefaultReadTimeout  = 5 * time.Second
 	serverDefaultWriteTimeout = 10 * time.Second
 	serverDefaultIdleTimeout  = 15 * time.Second
 	serverDefaultListenAddr   = ":8000"
 
-	kkDefaultGitHubTopic = "github"
+	kpDefaultGitHubTopic = "github"
 
-	kkDefaultQueueSize = 100
+	kpDefaultQueueSize = 100
 )
 
 var _ HTTPServer = (*Server)(nil) // compile time proof
@@ -165,7 +165,10 @@ func WithKafkaBrokers(brokers []string) Option {
 func WithKafkaGitHubTopic(s string) Option {
 	return func(server *Server) error {
 		if s == "" {
-			return fmt.Errorf("apiserver.WithKafkaGitHubTopic 's' github topic error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf(
+				"apiserver.WithKafkaGitHubTopic 'skpDefaultGitHubTopicub topic error: [%w]",
+				cerrors.ErrValueRequired,
+			)
 		}
 		server.kafkaGitHubTopic = s
 

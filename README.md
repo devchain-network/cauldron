@@ -35,6 +35,7 @@ Currently applies to repositories and organizations.
 - `pull_request_review` - Pull request review submitted, edited, or dismissed.
 - `push` - Git push to a repository.
 - `release` - Release created, edited, published, unpublished, or deleted.
+- `star` - A star is created or deleted from a repository.
 - `watch` - User stars a repository.
 
 ---

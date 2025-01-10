@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/IBM/sarama"
+	"github.com/devchain-network/cauldron/internal/apiserver/githubhandleroptions"
 	"github.com/go-playground/webhooks/v6/github"
 	"github.com/google/uuid"
 	"github.com/valyala/fasthttp"
@@ -18,24 +19,18 @@ func healthCheckHandler(ctx *fasthttp.RequestCtx) {
 	ctx.SetBodyString("OK")
 }
 
-// constants.
-const (
-	AnythingUnknown = "unknown"
-	UnsupportedStar = "star"
-)
-
-func githubWebhookHandler(opts *githubHandlerOptions) fasthttp.RequestHandler {
+func githubWebhookHandler(opts *githubhandleroptions.HTTPHandler) fasthttp.RequestHandler {
 	return func(ctx *fasthttp.RequestCtx) {
 		var httpReq http.Request
 		if err := fasthttpadaptor.ConvertRequest(ctx, &httpReq, true); err != nil {
-			opts.logger.Error("can not convert fasthttpreq -> httpReq", "error", err)
+			opts.CommonHandler.Logger.Error("can not convert fasthttpreq -> httpReq", "error", err)
 
 			return
 		}
 
-		httpHeaders := opts.parseGitHubWebhookHTTPRequestHeaders(httpReq.Header)
-		if httpHeaders.deliveryID == uuid.Nil {
-			opts.logger.Error("invalid X-Github-Delivery")
+		httpHeaders := opts.ParseRequestHeaders(httpReq.Header)
+		if httpHeaders.DeliveryID == uuid.Nil {
+			opts.CommonHandler.Logger.Error("invalid X-Github-Delivery")
 			ctx.SetStatusCode(fasthttp.StatusBadRequest)
 
 			return
@@ -57,48 +52,47 @@ func githubWebhookHandler(opts *githubHandlerOptions) fasthttp.RequestHandler {
 			github.StarEvent,
 			github.WatchEvent,
 		}
-		payload, err := opts.webhook.Parse(&httpReq, listenEvents...)
+		payload, err := opts.Webhook.Parse(&httpReq, listenEvents...)
 		if err != nil {
-			opts.logger.Info("webhook parse error", "error", err)
+			opts.CommonHandler.Logger.Info("github webhook parse error", "error", err)
 
 			return
 		}
 
-		opts.logger.Info(
+		opts.CommonHandler.Logger.Info(
 			"webhook received",
-			"event", httpHeaders.event,
-			"target type", httpHeaders.targetType,
+			"event", httpHeaders.Event,
+			"target type", httpHeaders.TargetType,
 		)
 
-		payloadB, errm := json.Marshal(payload)
-		if errm != nil {
-			opts.logger.Error("payload marshall error", "error", errm)
+		payloadBytes, err := json.Marshal(payload)
+		if err != nil {
+			opts.CommonHandler.Logger.Error("github webhook payload marshall error", "error", err)
 
 			return
 		}
 
-		messageKey := httpHeaders.deliveryID.String()
+		messageKey := httpHeaders.DeliveryID.String()
 		message := &sarama.ProducerMessage{
-			Topic: opts.topic,
+			Topic: opts.Topic,
 			Key:   sarama.StringEncoder(messageKey),
-			Value: sarama.ByteEncoder(payloadB),
+			Value: sarama.ByteEncoder(payloadBytes),
 			Headers: []sarama.RecordHeader{
-				{Key: []byte("event"), Value: []byte(httpHeaders.event)},
-				{Key: []byte("target-type"), Value: []byte(httpHeaders.targetType)},
-				{Key: []byte("target-id"), Value: []byte(strconv.FormatUint(httpHeaders.targetID, 10))},
-				{Key: []byte("hook-id"), Value: []byte(strconv.FormatUint(httpHeaders.hookID, 10))},
-				{Key: []byte("content-type"), Value: []byte("application/json")},
+				{Key: []byte("event"), Value: []byte(httpHeaders.Event)},
+				{Key: []byte("target-type"), Value: []byte(httpHeaders.TargetType)},
+				{Key: []byte("target-id"), Value: []byte(strconv.FormatUint(httpHeaders.TargetID, 10))},
+				{Key: []byte("hook-id"), Value: []byte(strconv.FormatUint(httpHeaders.HookID, 10))},
 			},
 		}
 
 		select {
-		case opts.producerMessageQueue <- message:
-			opts.logger.Info("message enqueued for processing")
+		case opts.CommonHandler.ProducerMessageQueue <- message:
+			opts.CommonHandler.Logger.Info("github webhook message enqueued for processing")
 		default:
-			opts.logger.Warn("message queue is full, dropping", "message", message)
+			opts.CommonHandler.Logger.Warn("github webhook message queue is full, dropping", "message", message)
 		}
 
-		opts.logger.Info("github webhook received successfully")
+		opts.CommonHandler.Logger.Info("github webhook received successfully")
 		ctx.SetStatusCode(fasthttp.StatusAccepted)
 	}
 }

@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
+	"github.com/devchain-network/cauldron/internal/apiserver/githubhandleroptions"
+	"github.com/devchain-network/cauldron/internal/apiserver/httphandleroptions"
 	"github.com/devchain-network/cauldron/internal/kafkaconsumer"
 	"github.com/devchain-network/cauldron/internal/slogger"
 	"github.com/go-playground/webhooks/v6/github"
@@ -22,9 +24,9 @@ func Run() error {
 	listenAddr := getenv.TCPAddr("LISTEN_ADDR", serverDefaultListenAddr)
 	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
 	githubHMACSecret := getenv.String("GITHUB_HMAC_SECRET", "")
-	kafkaTopicGitHub := getenv.String("KP_TOPIC_GITHUB", kkDefaultGitHubTopic)
+	kafkaTopicGitHub := getenv.String("KP_TOPIC_GITHUB", kpDefaultGitHubTopic)
 	brokersList := getenv.String("KCP_BROKERS", kafkaconsumer.DefaultKafkaBrokers)
-	producerMessageQueueSize := getenv.Int("KP_PRODUCER_QUEUE_SIZE", kkDefaultQueueSize)
+	producerMessageQueueSize := getenv.Int("KP_PRODUCER_QUEUE_SIZE", kpDefaultQueueSize)
 	backoff := getenv.Duration("KC_BACKOFF", kafkaconsumer.DefaultKafkaConsumerBackoff)
 	maxRetries := getenv.Int("KC_MAX_RETRIES", kafkaconsumer.DefaultKafkaConsumerMaxRetries)
 	if err := getenv.Parse(); err != nil {
@@ -77,19 +79,23 @@ func Run() error {
 	logger.Info("connected to kafka brokers", "addrs", kafkaBrokers)
 
 	producerMessageQueue := make(chan *sarama.ProducerMessage, *producerMessageQueueSize)
-	commonHandlerOpts, err := newHandlerOptions(
-		handlerOptionsWithLogger(logger),
-		handlerOptionsWithKafkaProducer(kafkaProducer),
-		handlerOptionsWithProducerMessageQueue(producerMessageQueue),
+
+	handlerOptions, err := httphandleroptions.New(
+		httphandleroptions.WithLogger(logger),
+		httphandleroptions.WithKafkaProducer(kafkaProducer),
+		httphandleroptions.WithProducerMessageQueue(producerMessageQueue),
 	)
 	if err != nil {
-		return fmt.Errorf("apiserver.Run newHandlerOptions error: [%w]", err)
+		return fmt.Errorf("apiserver.Run httphandleroptions.New error: [%w]", err)
 	}
 
-	githubHandlerOpts := githubHandlerOptions{
-		httpHandlerOptions: *commonHandlerOpts,
-		webhook:            githubWebhook,
-		topic:              *kafkaTopicGitHub,
+	githubHandlerOptions, err := githubhandleroptions.New(
+		githubhandleroptions.WithWebhook(githubWebhook),
+		githubhandleroptions.WithCommonHandler(handlerOptions),
+		githubhandleroptions.WithTopic(*kafkaTopicGitHub),
+	)
+	if err != nil {
+		return fmt.Errorf("apiserver.Run githubhandleroptions.New error: [%w]", err)
 	}
 
 	numMessageWorkers := runtime.NumCPU()
@@ -105,7 +111,7 @@ func Run() error {
 		WithKafkaGitHubTopic(*kafkaTopicGitHub),
 		WithKafkaBrokers(kafkaBrokers),
 		WithHTTPHandler(fasthttp.MethodGet, "/healthz", healthCheckHandler),
-		WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/github", githubWebhookHandler(&githubHandlerOpts)),
+		WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/github", githubWebhookHandler(githubHandlerOptions)),
 	)
 	if err != nil {
 		return fmt.Errorf("apiserver.Run apiserver.New error: [%w]", err)
@@ -122,7 +128,7 @@ func Run() error {
 				logger.Info("terminating worker", "worker id", i)
 			}()
 
-			commonHandlerOpts.messageWorker(i)
+			handlerOptions.MessageWorker(i)
 		}()
 	}
 
@@ -137,7 +143,7 @@ func Run() error {
 		if errStop := server.Stop(); err != nil {
 			logger.Error("server stop error: [%w]", "error", errStop)
 		}
-		commonHandlerOpts.shutdown()
+		handlerOptions.Shutdown()
 		close(ch)
 	}()
 

@@ -2,6 +2,22 @@
 
 require 'English'
 
+task :command_exists, [:command] do |_, args|
+  if `command -v #{args.command} > /dev/null 2>&1 && echo $?`.chomp.empty?
+    abort "'#{args.command}' command doesn't exists"
+  end
+end
+
+task :has_rubocop do
+  Rake::Task['command_exists'].invoke('rubocop')
+end
+task :has_go_migrate do
+  Rake::Task['command_exists'].invoke('migrate')
+end
+task :has_golangci_linter do
+  Rake::Task['command_exists'].invoke('golangci-lint')
+end
+
 desc 'default task, runs server'
 task default: ['run:server']
 
@@ -113,19 +129,6 @@ namespace :docker do
   end
 end
 
-task :command_exists, [:command] do |_, args|
-  if `command -v #{args.command} > /dev/null 2>&1 && echo $?`.chomp.empty?
-    abort "'#{args.command}' command doesn't exists"
-  end
-end
-
-task :has_rubocop do
-  Rake::Task['command_exists'].invoke('rubocop')
-end
-task :has_go_migrate do
-  Rake::Task['command_exists'].invoke('migrate')
-end
-
 DATABASE_NAME = ENV['DATABASE_NAME'] || nil
 DATABASE_URL = ENV['DATABASE_URL'] || nil
 
@@ -192,4 +195,12 @@ task :confirm do
   puts 'are you sure? [y,N]'
   input = $stdin.gets.chomp
   abort unless input.downcase == 'y'
+end
+
+desc 'run golang-ci linter'
+task lint: [:has_golangci_linter] do
+  system %{ golangci-lint run }
+  $CHILD_STATUS&.exitstatus || 1
+rescue Interrupt
+  0
 end

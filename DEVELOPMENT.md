@@ -118,6 +118,7 @@ rake docker:compose:kafka:down     # stop the kafka and kafka-ui only
 rake docker:compose:kafka:up       # run the kafka and kafka-ui only
 rake docker:run:github_consumer    # run github consumer
 rake docker:run:server             # run server
+rake lint                          # run golang-ci linter
 rake rubocop:autofix               # lint ruby and autofix
 rake rubocop:lint                  # lint ruby
 rake run:kafka:github:consumer     # run kafka github consumer
