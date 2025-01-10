@@ -151,6 +151,25 @@ func (c Consumer) getConfig() *sarama.Config {
 	return config
 }
 
+func (c Consumer) worker(workerID int, messages <-chan *sarama.ConsumerMessage) {
+	for msg := range messages {
+		switch KafkaTopicIdentifier(c.topic) {
+		case KafkaTopicIdentifierGitHub:
+			if err := c.storeGitHubMessage(msg); err != nil {
+				c.logger.Error("store github message error", "error", err, "worker id", workerID)
+
+				continue
+			}
+		case KafkaTopicIdentifierGitLab:
+			fmt.Println("parse GitLab kafka message, not implemented yet")
+		default:
+			fmt.Println("unknown topic identifier")
+		}
+
+		c.logger.Info("github messages successfully stored to db", "worker id", workerID)
+	}
+}
+
 func (c Consumer) storeGitHubMessage(msg *sarama.ConsumerMessage) error {
 	deliveryID, err := uuid.Parse(string(msg.Key))
 	if err != nil {
@@ -342,25 +361,6 @@ func (c Consumer) storeGitHubMessage(msg *sarama.ConsumerMessage) error {
 	}
 
 	return nil
-}
-
-func (c Consumer) worker(id int, messages <-chan *sarama.ConsumerMessage) {
-	for msg := range messages {
-		switch KafkaTopicIdentifier(c.topic) {
-		case KafkaTopicIdentifierGitHub:
-			if err := c.storeGitHubMessage(msg); err != nil {
-				c.logger.Error("store github message error", "error", err, "worker id", id)
-
-				continue
-			}
-		case KafkaTopicIdentifierGitLab:
-			fmt.Println("parse GitLab kafka message, not implemented yet")
-		default:
-			fmt.Println("unknown topic identifier")
-		}
-
-		c.logger.Info("github messages successfully stored to db", "worker id", id)
-	}
 }
 
 // Option represents option function type.
