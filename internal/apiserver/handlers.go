@@ -24,15 +24,6 @@ const (
 	UnsupportedStar = "star"
 )
 
-// GitHubWebhookRequestHeaders represents important http headers to fetch.
-type GitHubWebhookRequestHeaders struct {
-	Event      string
-	TargetType string
-	DeliveryID uuid.UUID
-	HookID     uint64
-	TargetID   uint64
-}
-
 func githubWebhookHandler(opts *githubHandlerOptions) fasthttp.RequestHandler {
 	return func(ctx *fasthttp.RequestCtx) {
 		var httpReq http.Request

@@ -53,6 +53,9 @@ type Consumer struct {
 	partition    int32
 }
 
+// Option represents option function type.
+type Option func(*Consumer) error
+
 // Start starts consumer.
 func (c Consumer) Start() error {
 	config := c.getConfig()
@@ -91,9 +94,6 @@ func (c Consumer) Start() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, os.Interrupt)
-
 	c.logger.Info("consuming messages from", "topic", c.topic)
 
 	messageBufferSize := runtime.NumCPU() * 10
@@ -102,7 +102,22 @@ func (c Consumer) Start() error {
 	numWorkers := runtime.NumCPU()
 	c.logger.Info("starting workers", "count", numWorkers)
 
+	ch := make(chan struct{})
 	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt)
+		<-sig
+
+		c.logger.Info("exiting message signal listener")
+		cancel()
+		close(ch)
+	}()
+
 	for i := range numWorkers {
 		wg.Add(1)
 		go func() {
@@ -113,14 +128,6 @@ func (c Consumer) Start() error {
 			c.worker(i, messageChan)
 		}()
 	}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		<-signals
-		cancel()
-		c.logger.Info("exiting message signal listener")
-	}()
 
 	wg.Add(1)
 	go func() {
@@ -146,6 +153,7 @@ func (c Consumer) Start() error {
 		}
 	}()
 
+	<-ch
 	wg.Wait()
 	c.logger.Info("all workers stopped")
 
@@ -373,9 +381,6 @@ func (c Consumer) storeGitHubMessage(msg *sarama.ConsumerMessage) error {
 
 	return nil
 }
-
-// Option represents option function type.
-type Option func(*Consumer) error
 
 // WithLogger sets logger.
 func WithLogger(l *slog.Logger) Option {

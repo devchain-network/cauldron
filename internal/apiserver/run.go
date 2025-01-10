@@ -61,12 +61,9 @@ func Run() error {
 
 		logger.Error(
 			"can not connect broker",
-			"error",
-			kafkaProducerErr,
-			"retry",
-			fmt.Sprintf("%d/%d", i, *maxRetries),
-			"backoff",
-			backoff.String(),
+			"error", kafkaProducerErr,
+			"retry", fmt.Sprintf("%d/%d", i, *maxRetries),
+			"backoff", backoff.String(),
 		)
 		time.Sleep(*backoff)
 		*backoff *= 2
@@ -93,10 +90,8 @@ func Run() error {
 	numMessageWorkers := runtime.NumCPU()
 	logger.Info(
 		"number of message workers",
-		"count",
-		numMessageWorkers,
-		"producer queue size",
-		*producerMessageQueueSize,
+		"count", numMessageWorkers,
+		"producer queue size", *producerMessageQueueSize,
 	)
 
 	server, err := New(
@@ -116,10 +111,19 @@ func Run() error {
 	var wg sync.WaitGroup
 	for i := range numMessageWorkers {
 		wg.Add(1)
-		go commonHandlerOpts.messageWorker(i, &wg)
+		go func() {
+			defer func() {
+				wg.Done()
+				logger.Info("terminating worker", "worker id", i)
+			}()
+
+			commonHandlerOpts.messageWorker(i)
+		}()
 	}
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 		<-sig
@@ -138,7 +142,7 @@ func Run() error {
 
 	<-ch
 	wg.Wait()
-	logger.Info("all clear, goodbye")
+	logger.Info("exiting apiserver, all clear")
 
 	return nil
 }
