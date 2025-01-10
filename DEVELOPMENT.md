@@ -90,7 +90,7 @@ export DATABASE_NAME="devchain-webhook"
 export DATABASE_URL="postgres://localhost:5432/${DATABASE_NAME}?sslmode=disable&timezone=UTC"
 ```
 
-## Clonse source for development
+## Clone source for development
 
 ```bash
 cd /path/to/development
@@ -124,6 +124,48 @@ rake run:kafka:github:consumer     # run kafka github consumer
 rake run:server                    # run server
 ```
 
+If you have `postgresql` locally installed, run:
+
+```bash
+rake db:init
+rake db:migrate
+```
+
+To setup your local database. To run components separately, open multiple tabs
+and run each command in separate tabs:
+
+```bash
+rake docker:compose:kafka:up        # kick kafka + kafka ui in tab 1
+rake                                # kick webhook server in tab 2
+rake run:kafka:github:consumer      # kick github consumer in tab 3
+
+ngrok http --url=<url-url>.ngrok-free.app 8000 # run ngrok in tab 4
+```
+
+Set `https://<url-url>.ngrok-free.app` webhook url on your GitHub repo or
+GitHub organization. Don’t forget to set your webhook secret as `GITHUB_HMAC_SECRET`
+before kicking webhook server (tab 2)
+
+If you don’t use `ruby` / `rake`:
+
+Webhook server runs via:
+
+```bash
+go run cmd/server/main.go
+```
+
+GitHub kafka consumer runs via:
+
+```bash
+go run cmd/githubconsumer/main.go
+```
+
+Now, run the kafka + kafka-ui via:
+
+```bash
+docker compose -f docker-compose.kafka.yml up
+```
+
 ### Infra
 
 ```mermaid
@@ -141,27 +183,6 @@ graph TD
   cauldron -->|depends_on| github-consumer
 
   kafka ---|volumes| kafka_data
-```
-
-Webhook server runs via:
-
-```bash
-go run cmd/server/main.go  # or,
-rake                       # run with rake task
-```
-
-GitHub kafka consumer runs via:
-
-```bash
-go run cmd/githubconsumer/main.go   # or,
-rake run:kafka:github:consumer      # run with rake task
-```
-
-Now, run the kafka + kafka-ui via:
-
-```bash
-docker compose -f docker-compose.kafka.yml up    # or,
-rake docker:compose:kafka:up                     # run with rake task
 ```
 
 Instead of running each service independently, use:
