@@ -106,18 +106,29 @@ func (c Consumer) Start() error {
 	for i := range numWorkers {
 		wg.Add(1)
 		go func() {
-			defer wg.Done()
+			defer func() {
+				wg.Done()
+				c.logger.Info("terminating worker", "worker id", i)
+			}()
 			c.worker(i, messageChan)
 		}()
 	}
 
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		<-signals
 		cancel()
+		c.logger.Info("exiting message signal listener")
 	}()
 
+	wg.Add(1)
 	go func() {
-		defer close(messageChan)
+		defer func() {
+			close(messageChan)
+			wg.Done()
+			c.logger.Info("exiting message consumer")
+		}()
 
 		for {
 			select {
@@ -128,7 +139,7 @@ func (c Consumer) Start() error {
 			case err := <-partitionConsumer.Errors():
 				c.logger.Error("partition consumer error", "error", err)
 			case <-ctx.Done():
-				c.logger.Info("shutting down message producer")
+				c.logger.Info("shutting down message consumer")
 
 				return
 			}

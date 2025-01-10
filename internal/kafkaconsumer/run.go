@@ -66,5 +66,7 @@ func Run() error {
 		return fmt.Errorf("kafkaconsumer.Run kafkaconsumer.Start error: [%w]", err)
 	}
 
+	logger.Info("exiting, all clear")
+
 	return nil
 }
