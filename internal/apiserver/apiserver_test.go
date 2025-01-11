@@ -295,3 +295,72 @@ func TestApiServer_HandlersWithKafkaGitHubTopicValid(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, server)
 }
+
+func TestApiServer_StatusNotFound(t *testing.T) {
+	server, err := apiserver.New(
+		apiserver.WithLogger(getLogger()),
+		apiserver.WithListenAddr(":8000"),
+		apiserver.WithHTTPHandler(fasthttp.MethodGet, "/healthz", apiserver.HealthCheckHandler),
+		apiserver.WithKafkaBrokers(getBrokers()),
+		apiserver.WithKafkaGitHubTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
+	)
+	assert.NoError(t, err)
+	assert.NotNil(t, server)
+
+	ctx := &fasthttp.RequestCtx{}
+	ctx.Request.SetRequestURI("/invalid-path")
+	ctx.Request.Header.SetMethod(fasthttp.MethodGet)
+
+	server.FastHTTP.Handler(ctx)
+	assert.Equal(t, fasthttp.StatusNotFound, ctx.Response.StatusCode())
+}
+
+func TestApiServer_MethodNotAllowed(t *testing.T) {
+	server, err := apiserver.New(
+		apiserver.WithLogger(getLogger()),
+		apiserver.WithListenAddr(":8000"),
+		apiserver.WithHTTPHandler(fasthttp.MethodGet, "/healthz", apiserver.HealthCheckHandler),
+		apiserver.WithKafkaBrokers(getBrokers()),
+		apiserver.WithKafkaGitHubTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
+	)
+	assert.NoError(t, err)
+	assert.NotNil(t, server)
+
+	ctx := &fasthttp.RequestCtx{}
+	ctx.Request.SetRequestURI("/healthz")
+	ctx.Request.Header.SetMethod(fasthttp.MethodPut)
+
+	server.FastHTTP.Handler(ctx)
+	assert.Equal(t, fasthttp.StatusMethodNotAllowed, ctx.Response.StatusCode())
+}
+
+func TestApiServer_HealthCheckHandler(t *testing.T) {
+	server, err := apiserver.New(
+		apiserver.WithLogger(getLogger()),
+		apiserver.WithListenAddr(":8000"),
+		apiserver.WithHTTPHandler(fasthttp.MethodGet, "/healthz", apiserver.HealthCheckHandler),
+		apiserver.WithKafkaBrokers(getBrokers()),
+		apiserver.WithKafkaGitHubTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
+	)
+	assert.NoError(t, err)
+	assert.NotNil(t, server)
+
+	ctx := &fasthttp.RequestCtx{}
+	ctx.Request.SetRequestURI("/healthz")
+	ctx.Request.Header.SetMethod(fasthttp.MethodGet)
+
+	server.FastHTTP.Handler(ctx)
+	assert.Equal(t, fasthttp.StatusOK, ctx.Response.StatusCode())
+}
+
+func TestApiServer_NoKafkaBrokers(t *testing.T) {
+	server, err := apiserver.New(
+		apiserver.WithLogger(getLogger()),
+		apiserver.WithListenAddr(":8000"),
+		apiserver.WithHTTPHandler(fasthttp.MethodGet, "/healthz", apiserver.HealthCheckHandler),
+		apiserver.WithKafkaGitHubTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
+	)
+	assert.Error(t, err)
+	assert.Nil(t, server)
+	assert.ErrorIs(t, err, cerrors.ErrValueRequired)
+}
