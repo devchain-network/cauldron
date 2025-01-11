@@ -13,6 +13,7 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/devchain-network/cauldron/internal/cerrors"
 	"github.com/devchain-network/cauldron/internal/storage"
+	"github.com/vigo/getenv"
 )
 
 // defaults values.
@@ -48,17 +49,19 @@ var (
 
 // Consumer represents kafa consumer setup.
 type Consumer struct {
-	Logger       *slog.Logger
-	Storage      storage.Storer
-	Consumer     sarama.Consumer
-	Topic        string
-	Brokers      []string
-	DialTimeout  time.Duration
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	Backoff      time.Duration
-	MaxRetries   uint8
-	Partition    int32
+	ConsumerFactory ConsumerFactoryFunc
+	ConsumerConfig  ConsumerConfigFactoryFunc
+	Logger          *slog.Logger
+	Storage         storage.Storer
+	Consumer        sarama.Consumer
+	Topic           string
+	Brokers         []string
+	DialTimeout     time.Duration
+	ReadTimeout     time.Duration
+	WriteTimeout    time.Duration
+	Backoff         time.Duration
+	MaxRetries      uint8
+	Partition       int32
 }
 
 // Option represents option function type.
@@ -66,14 +69,24 @@ type Option func(*Consumer) error
 
 // Ping checks kafka consumer availability and sets consumer instance.
 func (c *Consumer) Ping() error {
-	config := c.getConfig()
+	var config *sarama.Config
+	if c.ConsumerConfig == nil {
+		config = c.getConfig()
+	} else {
+		config = c.ConsumerConfig()
+	}
 
 	var consumer sarama.Consumer
 	var consumerErr error
 	backoff := c.Backoff
 
 	for i := range c.MaxRetries {
-		consumer, consumerErr = sarama.NewConsumer(c.Brokers, config)
+		if c.ConsumerFactory == nil {
+			consumer, consumerErr = sarama.NewConsumer(c.Brokers, config)
+		} else {
+			consumer, consumerErr = c.ConsumerFactory(c.Brokers, config)
+		}
+
 		if consumerErr == nil {
 			break
 		}
@@ -235,6 +248,12 @@ func WithBrokers(brokers []string) Option {
 			return fmt.Errorf("kafkaconsumer.WithBrokers consumer.Brokers error: [%w]", cerrors.ErrValueRequired)
 		}
 
+		for _, broker := range brokers {
+			if _, err := getenv.ValidateTCPNetworkAddress(broker); err != nil {
+				return fmt.Errorf("kafkaconsumer.WithBrokers getenv.ValidateTCPNetworkAddress error: [%w]", err)
+			}
+		}
+
 		consumer.Brokers = make([]string, len(brokers))
 		copy(consumer.Brokers, brokers)
 
@@ -245,7 +264,7 @@ func WithBrokers(brokers []string) Option {
 // WithPartition sets partition.
 func WithPartition(i int) Option {
 	return func(consumer *Consumer) error {
-		if i > 2147483647 || i < -2147483648 {
+		if i < 0 || i > 2147483647 {
 			return fmt.Errorf("kafkaconsumer.WithPartition consumer.Partition error: [%w]", cerrors.ErrInvalid)
 		}
 		consumer.Partition = int32(i)
@@ -257,6 +276,9 @@ func WithPartition(i int) Option {
 // WithDialTimeout sets dial timeout.
 func WithDialTimeout(d time.Duration) Option {
 	return func(consumer *Consumer) error {
+		if d < 0 {
+			return fmt.Errorf("kafkaconsumer.WithDialTimeout consumer.DialTimeout error: [%w]", cerrors.ErrInvalid)
+		}
 		consumer.DialTimeout = d
 
 		return nil
@@ -266,6 +288,9 @@ func WithDialTimeout(d time.Duration) Option {
 // WithReadTimeout sets read timeout.
 func WithReadTimeout(d time.Duration) Option {
 	return func(consumer *Consumer) error {
+		if d < 0 {
+			return fmt.Errorf("kafkaconsumer.WithReadTimeout consumer.ReadTimeout error: [%w]", cerrors.ErrInvalid)
+		}
 		consumer.ReadTimeout = d
 
 		return nil
@@ -275,6 +300,9 @@ func WithReadTimeout(d time.Duration) Option {
 // WithWriteTimeout sets write timeout.
 func WithWriteTimeout(d time.Duration) Option {
 	return func(consumer *Consumer) error {
+		if d < 0 {
+			return fmt.Errorf("kafkaconsumer.WithWriteTimeout consumer.WriteTimeout error: [%w]", cerrors.ErrInvalid)
+		}
 		consumer.WriteTimeout = d
 
 		return nil
@@ -287,6 +315,11 @@ func WithBackoff(d time.Duration) Option {
 		if d == 0 {
 			return fmt.Errorf("kafkaconsumer.WithBackoff consumer.Backoff error: [%w]", cerrors.ErrValueRequired)
 		}
+
+		if d < 0 || d > time.Minute {
+			return fmt.Errorf("kafkaconsumer.WithBackoff consumer.Backoff error: [%w]", cerrors.ErrInvalid)
+		}
+
 		consumer.Backoff = d
 
 		return nil
@@ -333,9 +366,26 @@ func New(options ...Option) (*Consumer, error) {
 	if consumer.Storage == nil {
 		return nil, fmt.Errorf("kafkaconsumer.New consumer.Storage error: [%w]", cerrors.ErrValueRequired)
 	}
-
 	if consumer.Topic == "" {
 		return nil, fmt.Errorf("kafkaconsumer.New consumer.Topic error: [%w]", cerrors.ErrValueRequired)
+	}
+	if consumer.Brokers == nil {
+		consumer.Brokers = []string{DefaultKafkaBrokers}
+	}
+	if consumer.DialTimeout == 0 {
+		consumer.DialTimeout = DefaultKafkaConsumerDialTimeout
+	}
+	if consumer.ReadTimeout == 0 {
+		consumer.ReadTimeout = DefaultKafkaConsumerReadTimeout
+	}
+	if consumer.WriteTimeout == 0 {
+		consumer.WriteTimeout = DefaultKafkaConsumerWriteTimeout
+	}
+	if consumer.Backoff == 0 {
+		consumer.Backoff = DefaultKafkaConsumerBackoff
+	}
+	if consumer.MaxRetries == 0 {
+		consumer.MaxRetries = DefaultKafkaConsumerMaxRetries
 	}
 
 	return consumer, nil

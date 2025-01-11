@@ -3,6 +3,7 @@ package kafkaconsumer
 import (
 	"strings"
 
+	"github.com/IBM/sarama"
 	"github.com/vigo/getenv"
 )
 
@@ -11,6 +12,12 @@ const (
 	KafkaTopicIdentifierGitHub KafkaTopicIdentifier = "github"
 	KafkaTopicIdentifierGitLab KafkaTopicIdentifier = "gitlab"
 )
+
+// ConsumerFactoryFunc is a type for handling consumer.
+type ConsumerFactoryFunc func(brokers []string, config *sarama.Config) (sarama.Consumer, error)
+
+// ConsumerConfigFactoryFunc is a type for handling config.
+type ConsumerConfigFactoryFunc func() *sarama.Config
 
 // TCPAddrs represents comma separated tcp addr list.
 type TCPAddrs string
