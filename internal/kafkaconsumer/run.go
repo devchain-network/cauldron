@@ -42,6 +42,11 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("apiserver.Run storage.New error: [%w]", err)
 	}
+
+	if err = db.Ping(); err != nil {
+		return fmt.Errorf("apiserver.Run db.Ping error: [%w]", err)
+	}
+
 	defer func() {
 		logger.Info("closing pfx pool")
 		db.Pool.Close()
@@ -64,6 +69,12 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("kafkaconsumer.Run kafkaconsumer.New error: [%w]", err)
 	}
+
+	if err = kafkaConsumer.Ping(); err != nil {
+		return fmt.Errorf("kafkaconsumer.Run kafkaconsumer.Ping error: [%w]", err)
+	}
+
+	defer func() { _ = kafkaConsumer.Consumer.Close() }()
 
 	if err = kafkaConsumer.Start(); err != nil {
 		return fmt.Errorf("kafkaconsumer.Run kafkaconsumer.Start error: [%w]", err)

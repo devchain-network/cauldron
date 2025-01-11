@@ -31,6 +31,7 @@ const (
 // KafkaConsumer defines kafka consumer behaviours.
 type KafkaConsumer interface {
 	Start() error
+	Ping() error
 	Worker(workerID int, messages <-chan *sarama.ConsumerMessage)
 }
 
@@ -49,6 +50,7 @@ var (
 type Consumer struct {
 	Logger       *slog.Logger
 	Storage      storage.Storer
+	Consumer     sarama.Consumer
 	Topic        string
 	Brokers      []string
 	DialTimeout  time.Duration
@@ -62,8 +64,8 @@ type Consumer struct {
 // Option represents option function type.
 type Option func(*Consumer) error
 
-// Start starts consumer.
-func (c Consumer) Start() error {
+// Ping checks kafka consumer availability and sets consumer instance.
+func (c *Consumer) Ping() error {
 	config := c.getConfig()
 
 	var consumer sarama.Consumer
@@ -89,9 +91,15 @@ func (c Consumer) Start() error {
 	if consumerErr != nil {
 		return fmt.Errorf("kafkaconsumer.Consumer.Start error: [%w]", consumerErr)
 	}
-	defer func() { _ = consumer.Close() }()
 
-	partitionConsumer, err := consumer.ConsumePartition(c.Topic, c.Partition, sarama.OffsetNewest)
+	c.Consumer = consumer
+
+	return nil
+}
+
+// Start starts consumer.
+func (c Consumer) Start() error {
+	partitionConsumer, err := c.Consumer.ConsumePartition(c.Topic, c.Partition, sarama.OffsetNewest)
 	if err != nil {
 		return fmt.Errorf("kafkaconsumer.Consumer consumer.ConsumePartition error: [%w]", err)
 	}

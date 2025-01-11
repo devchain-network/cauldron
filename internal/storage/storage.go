@@ -16,7 +16,10 @@ const (
 	DefaultDBPingMaxRetries = 10
 )
 
-var _ Storer = (*Manager)(nil) // compile time proof
+var (
+	_ Storer       = (*Manager)(nil) // compile time proof
+	_ GitHubStorer = (*Manager)(nil) // compile time proof
+)
 
 // GitHubStorer defines storage behaviours for github webhook.
 type GitHubStorer interface {
@@ -25,6 +28,7 @@ type GitHubStorer interface {
 
 // Storer defines storage behaviours for different webhooks.
 type Storer interface {
+	Ping() error
 	GitHubStorer
 }
 
@@ -41,7 +45,7 @@ type Manager struct {
 type Option func(*Manager) error
 
 // GitHubStore stores given github webhook data with extras to database.
-func (m *Manager) GitHubStore(data *GitHubWebhookData) error {
+func (m Manager) GitHubStore(data *GitHubWebhookData) error {
 	_, err := m.Pool.Exec(
 		context.Background(),
 		githubWebhookQuery,
@@ -58,6 +62,37 @@ func (m *Manager) GitHubStore(data *GitHubWebhookData) error {
 	)
 	if err != nil {
 		return fmt.Errorf("storage.GitHubStore error: [%w]", err)
+	}
+
+	return nil
+}
+
+// Ping implements a retry and backoff mechanism to check whether a database
+// connection can be established.
+func (m Manager) Ping() error {
+	var pingErr error
+	backOff := m.BackOff
+	ctx := context.Background()
+
+	for i := range m.MaxRetries {
+		pingErr = m.Pool.Ping(ctx)
+		if pingErr == nil {
+			m.Logger.Info("connected to database")
+
+			break
+		}
+		m.Logger.Error(
+			"can not ping database",
+			"error", pingErr,
+			"retry", fmt.Sprintf("%d/%d", i, m.MaxRetries),
+			"backoff", backOff.String(),
+		)
+		time.Sleep(backOff)
+		backOff *= 2
+	}
+
+	if pingErr != nil {
+		return fmt.Errorf("storage.ping error: [%w]", pingErr)
 	}
 
 	return nil
@@ -140,30 +175,6 @@ func New(options ...Option) (*Manager, error) {
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("storage.New pgxpool.NewWithConfig error: [%w]", err)
-	}
-
-	var pingErr error
-	backOff := manager.BackOff
-	for i := range manager.MaxRetries {
-		pingErr = pool.Ping(ctx)
-		if pingErr == nil {
-			manager.Logger.Info("connected to database")
-
-			break
-		}
-
-		manager.Logger.Error(
-			"can not ping database",
-			"error", pingErr,
-			"retry", fmt.Sprintf("%d/%d", i, manager.MaxRetries),
-			"backoff", backOff.String(),
-		)
-		time.Sleep(backOff)
-		backOff *= 2
-	}
-
-	if pingErr != nil {
-		return nil, fmt.Errorf("storage.New ping error: [%w]", pingErr)
 	}
 
 	manager.Pool = pool
