@@ -52,7 +52,7 @@ func (s KafkaTopicIdentifier) String() string {
 // IsKafkaTopicValid validates if given topic is supported.
 func IsKafkaTopicValid(s KafkaTopicIdentifier) error {
 	if s.String() == "" {
-		return fmt.Errorf("%s error: [%w]", s, cerrors.ErrInvalid)
+		return fmt.Errorf("%s error: [%w]", s, cerrors.ErrValueRequired)
 	}
 
 	if !slices.Contains(validKafkaTopicIdentifiers, s) {

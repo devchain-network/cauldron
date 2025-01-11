@@ -92,6 +92,10 @@ func WithCommonHandler(h *httphandleroptions.HTTPHandler) Option {
 // WithTopic sets topic name to consume.
 func WithTopic(s kafkaconsumer.KafkaTopicIdentifier) Option {
 	return func(hh *HTTPHandler) error {
+		if err := kafkaconsumer.IsKafkaTopicValid(s); err != nil {
+			return fmt.Errorf("githubhandleroptions.WithTopic hh.Topic error: [%w]", err)
+		}
+
 		hh.Topic = s
 
 		return nil

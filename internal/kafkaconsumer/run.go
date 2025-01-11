@@ -48,7 +48,7 @@ func Run() error {
 	}
 
 	defer func() {
-		logger.Info("closing pfx pool")
+		logger.Info("closing pgx pool")
 		db.Pool.Close()
 	}()
 

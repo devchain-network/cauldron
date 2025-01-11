@@ -35,8 +35,18 @@ func getLogger() *slog.Logger {
 	return slog.New(new(MockJSONLogHandler))
 }
 
-func TestApiServer_NilLogger(t *testing.T) {
+func TestApiServer_NoLogger(t *testing.T) {
 	server, err := apiserver.New()
+
+	assert.Error(t, err)
+	assert.Nil(t, server)
+	assert.ErrorIs(t, err, cerrors.ErrValueRequired)
+}
+
+func TestApiServer_NilLogger(t *testing.T) {
+	server, err := apiserver.New(
+		apiserver.WithLogger(nil),
+	)
 
 	assert.Error(t, err)
 	assert.Nil(t, server)
@@ -212,11 +222,76 @@ func TestApiServer_HandlersWithKafkaBrokersInvalid(t *testing.T) {
 	server, err := apiserver.New(
 		apiserver.WithLogger(getLogger()),
 		apiserver.WithHTTPHandler(fasthttp.MethodGet, "/foo", getMockFastHTTPHandlerOK()),
-		apiserver.WithIdleTimeout(-1*time.Second),
 		apiserver.WithKafkaBrokers([]string{"foo"}),
 	)
 
 	assert.Error(t, err)
 	assert.Nil(t, server)
 	assert.ErrorIs(t, err, cerrors.ErrInvalid)
+}
+
+func TestApiServer_HandlersWithKafkaBrokersEmpty(t *testing.T) {
+	server, err := apiserver.New(
+		apiserver.WithLogger(getLogger()),
+		apiserver.WithHTTPHandler(fasthttp.MethodGet, "/foo", getMockFastHTTPHandlerOK()),
+		apiserver.WithKafkaBrokers([]string{""}),
+	)
+
+	assert.Error(t, err)
+	assert.Nil(t, server)
+	assert.ErrorIs(t, err, cerrors.ErrValueRequired)
+}
+
+func TestApiServer_HandlersWithKafkaBrokersNil(t *testing.T) {
+	server, err := apiserver.New(
+		apiserver.WithLogger(getLogger()),
+		apiserver.WithHTTPHandler(fasthttp.MethodGet, "/foo", getMockFastHTTPHandlerOK()),
+		apiserver.WithKafkaBrokers(nil),
+	)
+
+	assert.Error(t, err)
+	assert.Nil(t, server)
+	assert.ErrorIs(t, err, cerrors.ErrValueRequired)
+}
+
+func TestApiServer_HandlersWithKafkaGitHubTopicEmpty(t *testing.T) {
+	server, err := apiserver.New(
+		apiserver.WithLogger(getLogger()),
+		apiserver.WithHTTPHandler(fasthttp.MethodGet, "/foo", getMockFastHTTPHandlerOK()),
+		apiserver.WithKafkaBrokers(getBrokers()),
+		apiserver.WithKafkaGitHubTopic(kafkaconsumer.KafkaTopicIdentifier("")),
+	)
+
+	assert.Error(t, err)
+	assert.Nil(t, server)
+	assert.ErrorIs(t, err, cerrors.ErrValueRequired)
+}
+
+func TestApiServer_HandlersWithKafkaGitHubTopicInvalid(t *testing.T) {
+	server, err := apiserver.New(
+		apiserver.WithLogger(getLogger()),
+		apiserver.WithHTTPHandler(fasthttp.MethodGet, "/foo", getMockFastHTTPHandlerOK()),
+		apiserver.WithKafkaBrokers(getBrokers()),
+		apiserver.WithKafkaGitHubTopic(kafkaconsumer.KafkaTopicIdentifier("foo")),
+	)
+
+	assert.Error(t, err)
+	assert.Nil(t, server)
+	assert.ErrorIs(t, err, cerrors.ErrInvalid)
+}
+
+func TestApiServer_HandlersWithKafkaGitHubTopicValid(t *testing.T) {
+	server, err := apiserver.New(
+		apiserver.WithLogger(getLogger()),
+		apiserver.WithListenAddr(":9000"),
+		apiserver.WithHTTPHandler(fasthttp.MethodGet, "/foo", getMockFastHTTPHandlerOK()),
+		apiserver.WithKafkaBrokers(getBrokers()),
+		apiserver.WithKafkaGitHubTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
+		apiserver.WithReadTimeout(5*time.Second),
+		apiserver.WithWriteTimeout(5*time.Second),
+		apiserver.WithIdleTimeout(5*time.Second),
+	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, server)
 }

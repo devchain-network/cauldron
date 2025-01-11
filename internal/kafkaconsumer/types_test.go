@@ -63,7 +63,7 @@ func TestIsKafkaTopicValid_Error(t *testing.T) {
 		topic  kafkaconsumer.KafkaTopicIdentifier
 		expErr error
 	}{
-		{name: "Empty Topic", topic: "", expErr: cerrors.ErrInvalid},
+		{name: "Empty Topic", topic: "", expErr: cerrors.ErrValueRequired},
 		{name: "Invalid Topic", topic: "unknown", expErr: cerrors.ErrInvalid},
 	}
 
