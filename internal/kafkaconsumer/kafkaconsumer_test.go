@@ -307,3 +307,29 @@ func TestPing_Success(t *testing.T) {
 	err = consumer.Ping()
 	assert.NoError(t, err)
 }
+
+func TestPing_Error(t *testing.T) {
+	db := new(MockStorer)
+	db.On("GitHubStore", mock.Anything).Return(nil)
+
+	consumer, err := kafkaconsumer.New(
+		kafkaconsumer.WithLogger(getLogger()),
+		kafkaconsumer.WithStorage(db),
+		kafkaconsumer.WithTopic("test"),
+	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, consumer)
+
+	consumer.ConsumerConfig = func() *sarama.Config {
+		return mocks.NewTestConfig()
+	}
+
+	consumer.ConsumerFactory = func(brokers []string, config *sarama.Config) (sarama.Consumer, error) {
+		return nil, sarama.ErrOutOfBrokers
+	}
+	consumer.MaxRetries = 1
+
+	err = consumer.Ping()
+	assert.Error(t, err)
+}
