@@ -4,8 +4,9 @@ repos:
     hooks:
       - id: golangci-lint
       - id: go-mod-tidy
+      - id: go-unit-tests
 
   - repo: https://github.com/rubocop-hq/rubocop
-    rev: v1.69.2
+    rev: v1.70.0
     hooks:
       - id: rubocop
