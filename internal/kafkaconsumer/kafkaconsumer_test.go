@@ -3,6 +3,8 @@ package kafkaconsumer_test
 import (
 	"context"
 	"log/slog"
+	"os"
+	"syscall"
 	"testing"
 	"time"
 
@@ -332,4 +334,86 @@ func TestPing_Error(t *testing.T) {
 
 	err = consumer.Ping()
 	assert.Error(t, err)
+}
+
+func TestStart_ErrorPartitionConsumer(t *testing.T) {
+	db := new(MockStorer)
+	db.On("GitHubStore", mock.Anything).Return(nil)
+
+	mockConsumer := mocks.NewConsumer(t, nil)
+	mockConsumer.ExpectConsumePartition("test", 0, sarama.OffsetNewest).YieldError(sarama.ErrOutOfBrokers)
+
+	consumer, err := kafkaconsumer.New(
+		kafkaconsumer.WithLogger(getLogger()),
+		kafkaconsumer.WithStorage(db),
+		kafkaconsumer.WithTopic("test"),
+	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, consumer)
+
+	consumer.ConsumerConfig = func() *sarama.Config {
+		return mocks.NewTestConfig()
+	}
+
+	consumer.ConsumerFactory = func(brokers []string, config *sarama.Config) (sarama.Consumer, error) {
+		return mockConsumer, nil
+	}
+
+	err = consumer.Ping()
+	assert.NoError(t, err)
+
+	go func() {
+		err := consumer.Start()
+		assert.NoError(t, err)
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+
+	assert.NoError(t, mockConsumer.Close())
+}
+
+func TestWorker_GitHubMessageSuccess(t *testing.T) {
+	db := new(MockStorer)
+	db.On("GitHubStore", mock.Anything).Return(nil)
+
+	mockConsumer := mocks.NewConsumer(t, nil)
+	mockConsumer.ExpectConsumePartition("github", 0, sarama.OffsetNewest).YieldMessage(
+		&sarama.ConsumerMessage{Value: []byte(`{"test": "message"}`)},
+	)
+
+	consumer, err := kafkaconsumer.New(
+		kafkaconsumer.WithLogger(getLogger()),
+		kafkaconsumer.WithStorage(db),
+		kafkaconsumer.WithTopic(string(kafkaconsumer.KafkaTopicIdentifierGitHub)),
+	)
+	assert.NoError(t, err)
+	assert.NotNil(t, consumer)
+
+	consumer.ConsumerConfig = func() *sarama.Config {
+		return mocks.NewTestConfig()
+	}
+
+	consumer.ConsumerFactory = func(brokers []string, config *sarama.Config) (sarama.Consumer, error) {
+		return mockConsumer, nil
+	}
+
+	err = consumer.Ping()
+	assert.NoError(t, err)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		err := consumer.Start()
+		assert.NoError(t, err)
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+
+	process, _ := os.FindProcess(syscall.Getpid())
+	err = process.Signal(os.Interrupt)
+	assert.NoError(t, err)
+
+	assert.NoError(t, mockConsumer.Close())
+	<-done
 }

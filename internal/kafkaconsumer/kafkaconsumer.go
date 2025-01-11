@@ -112,6 +112,7 @@ func (c *Consumer) Ping() error {
 
 // Start starts consumer.
 func (c Consumer) Start() error {
+	fmt.Println(c.Topic, c.Partition)
 	partitionConsumer, err := c.Consumer.ConsumePartition(c.Topic, c.Partition, sarama.OffsetNewest)
 	if err != nil {
 		return fmt.Errorf("kafkaconsumer.Consumer consumer.ConsumePartition error: [%w]", err)
