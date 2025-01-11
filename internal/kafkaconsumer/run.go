@@ -56,7 +56,7 @@ func Run() error {
 
 	kafkaConsumer, err := New(
 		WithLogger(logger),
-		WithTopic(*topic),
+		WithTopic(KafkaTopicIdentifier(*topic)),
 		WithPartition(*partition),
 		WithBrokers(brokers),
 		WithDialTimeout(*dialTimeout),

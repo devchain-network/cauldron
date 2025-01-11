@@ -106,7 +106,7 @@ func TestNew_ErrorInvalidBrokers(t *testing.T) {
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(getLogger()),
 		kafkaconsumer.WithStorage(db),
-		kafkaconsumer.WithTopic("test"),
+		kafkaconsumer.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 		kafkaconsumer.WithBrokers([]string{"foo"}),
 	)
 	assert.Error(t, err)
@@ -120,7 +120,7 @@ func TestNew_ErrorInvalidPartitionNegative(t *testing.T) {
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(getLogger()),
 		kafkaconsumer.WithStorage(db),
-		kafkaconsumer.WithTopic("test"),
+		kafkaconsumer.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 		kafkaconsumer.WithPartition(-1),
 	)
 	assert.Error(t, err)
@@ -135,7 +135,7 @@ func TestNew_ErrorInvalidPartition(t *testing.T) {
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(getLogger()),
 		kafkaconsumer.WithStorage(db),
-		kafkaconsumer.WithTopic("test"),
+		kafkaconsumer.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 		kafkaconsumer.WithPartition(2147483648),
 	)
 	assert.Error(t, err)
@@ -150,7 +150,7 @@ func TestNew_ErrorInvalidDialTimeout(t *testing.T) {
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(getLogger()),
 		kafkaconsumer.WithStorage(db),
-		kafkaconsumer.WithTopic("test"),
+		kafkaconsumer.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 		kafkaconsumer.WithDialTimeout(-1*time.Second),
 	)
 	assert.Error(t, err)
@@ -165,7 +165,7 @@ func TestNew_ErrorInvalidReadTimeout(t *testing.T) {
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(getLogger()),
 		kafkaconsumer.WithStorage(db),
-		kafkaconsumer.WithTopic("test"),
+		kafkaconsumer.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 		kafkaconsumer.WithReadTimeout(-1*time.Second),
 	)
 	assert.Error(t, err)
@@ -180,7 +180,7 @@ func TestNew_ErrorInvalidWriteTimeout(t *testing.T) {
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(getLogger()),
 		kafkaconsumer.WithStorage(db),
-		kafkaconsumer.WithTopic("test"),
+		kafkaconsumer.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 		kafkaconsumer.WithWriteTimeout(-1*time.Second),
 	)
 	assert.Error(t, err)
@@ -195,7 +195,7 @@ func TestNew_ErrorZeroBackoff(t *testing.T) {
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(getLogger()),
 		kafkaconsumer.WithStorage(db),
-		kafkaconsumer.WithTopic("test"),
+		kafkaconsumer.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 		kafkaconsumer.WithBackoff(0),
 	)
 	assert.Error(t, err)
@@ -210,7 +210,7 @@ func TestNew_ErrorInvalidBackoff(t *testing.T) {
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(getLogger()),
 		kafkaconsumer.WithStorage(db),
-		kafkaconsumer.WithTopic("test"),
+		kafkaconsumer.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 		kafkaconsumer.WithBackoff(-1),
 	)
 	assert.Error(t, err)
@@ -225,7 +225,7 @@ func TestNew_ErrorInvalidBackoffLong(t *testing.T) {
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(getLogger()),
 		kafkaconsumer.WithStorage(db),
-		kafkaconsumer.WithTopic("test"),
+		kafkaconsumer.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 		kafkaconsumer.WithBackoff(2*time.Minute),
 	)
 	assert.Error(t, err)
@@ -240,7 +240,7 @@ func TestNew_ErrorInvalidMaxRetriesNegative(t *testing.T) {
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(getLogger()),
 		kafkaconsumer.WithStorage(db),
-		kafkaconsumer.WithTopic("test"),
+		kafkaconsumer.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 		kafkaconsumer.WithMaxRetries(-1),
 	)
 	assert.Error(t, err)
@@ -255,7 +255,7 @@ func TestNew_ErrorInvalidMaxRetries(t *testing.T) {
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(getLogger()),
 		kafkaconsumer.WithStorage(db),
-		kafkaconsumer.WithTopic("test"),
+		kafkaconsumer.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 		kafkaconsumer.WithMaxRetries(256),
 	)
 	assert.Error(t, err)
@@ -271,7 +271,7 @@ func TestNew_Defaults(t *testing.T) {
 		kafkaconsumer.WithLogger(getLogger()),
 		kafkaconsumer.WithStorage(db),
 		kafkaconsumer.WithBrokers([]string{"127.0.0.1:9094"}),
-		kafkaconsumer.WithTopic("test"),
+		kafkaconsumer.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 	)
 	assert.NoError(t, err)
 	assert.NotNil(t, consumer)
@@ -290,7 +290,7 @@ func TestPing_Success(t *testing.T) {
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(getLogger()),
 		kafkaconsumer.WithStorage(db),
-		kafkaconsumer.WithTopic("test"),
+		kafkaconsumer.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 	)
 
 	assert.NoError(t, err)
@@ -317,7 +317,7 @@ func TestPing_Error(t *testing.T) {
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(getLogger()),
 		kafkaconsumer.WithStorage(db),
-		kafkaconsumer.WithTopic("test"),
+		kafkaconsumer.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 	)
 
 	assert.NoError(t, err)
@@ -341,12 +341,16 @@ func TestStart_ErrorPartitionConsumer(t *testing.T) {
 	db.On("GitHubStore", mock.Anything).Return(nil)
 
 	mockConsumer := mocks.NewConsumer(t, nil)
-	mockConsumer.ExpectConsumePartition("test", 0, sarama.OffsetNewest).YieldError(sarama.ErrOutOfBrokers)
+	mockConsumer.ExpectConsumePartition(
+		kafkaconsumer.KafkaTopicIdentifierGitHub.String(),
+		0,
+		sarama.OffsetNewest,
+	).YieldError(sarama.ErrOutOfBrokers)
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(getLogger()),
 		kafkaconsumer.WithStorage(db),
-		kafkaconsumer.WithTopic("test"),
+		kafkaconsumer.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 	)
 
 	assert.NoError(t, err)
@@ -378,14 +382,18 @@ func TestWorker_GitHubMessageSuccess(t *testing.T) {
 	db.On("GitHubStore", mock.Anything).Return(nil)
 
 	mockConsumer := mocks.NewConsumer(t, nil)
-	mockConsumer.ExpectConsumePartition("github", 0, sarama.OffsetNewest).YieldMessage(
+	mockConsumer.ExpectConsumePartition(
+		kafkaconsumer.KafkaTopicIdentifierGitHub.String(),
+		0,
+		sarama.OffsetNewest,
+	).YieldMessage(
 		&sarama.ConsumerMessage{Value: []byte(`{"test": "message"}`)},
 	)
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(getLogger()),
 		kafkaconsumer.WithStorage(db),
-		kafkaconsumer.WithTopic(string(kafkaconsumer.KafkaTopicIdentifierGitHub)),
+		kafkaconsumer.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 	)
 	assert.NoError(t, err)
 	assert.NotNil(t, consumer)

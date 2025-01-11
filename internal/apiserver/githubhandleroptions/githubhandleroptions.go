@@ -7,6 +7,7 @@ import (
 
 	"github.com/devchain-network/cauldron/internal/apiserver/httphandleroptions"
 	"github.com/devchain-network/cauldron/internal/cerrors"
+	"github.com/devchain-network/cauldron/internal/kafkaconsumer"
 	"github.com/go-playground/webhooks/v6/github"
 	"github.com/google/uuid"
 )
@@ -22,7 +23,7 @@ type Handler interface {
 type HTTPHandler struct {
 	Webhook       *github.Webhook
 	CommonHandler *httphandleroptions.HTTPHandler
-	Topic         string
+	Topic         kafkaconsumer.KafkaTopicIdentifier
 }
 
 // Option represents option function type.
@@ -89,11 +90,8 @@ func WithCommonHandler(h *httphandleroptions.HTTPHandler) Option {
 }
 
 // WithTopic sets topic name to consume.
-func WithTopic(s string) Option {
+func WithTopic(s kafkaconsumer.KafkaTopicIdentifier) Option {
 	return func(hh *HTTPHandler) error {
-		if s == "" {
-			return fmt.Errorf("githubhandleroptions.WithCommonHandler error: [%w]", cerrors.ErrValueRequired)
-		}
 		hh.Topic = s
 
 		return nil
@@ -115,9 +113,6 @@ func New(options ...Option) (*HTTPHandler, error) {
 	}
 	if handler.CommonHandler == nil {
 		return nil, fmt.Errorf("githubhandleroptions.New handler.CommonHandler error: [%w]", cerrors.ErrValueRequired)
-	}
-	if handler.Topic == "" {
-		return nil, fmt.Errorf("githubhandleroptions.New handler.Topic error: [%w]", cerrors.ErrValueRequired)
 	}
 
 	return handler, nil

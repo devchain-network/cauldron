@@ -13,7 +13,6 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/devchain-network/cauldron/internal/cerrors"
 	"github.com/devchain-network/cauldron/internal/storage"
-	"github.com/vigo/getenv"
 )
 
 // defaults values.
@@ -54,7 +53,7 @@ type Consumer struct {
 	Logger          *slog.Logger
 	Storage         storage.Storer
 	Consumer        sarama.Consumer
-	Topic           string
+	Topic           KafkaTopicIdentifier
 	Brokers         []string
 	DialTimeout     time.Duration
 	ReadTimeout     time.Duration
@@ -112,7 +111,7 @@ func (c *Consumer) Ping() error {
 
 // Start starts consumer.
 func (c Consumer) Start() error {
-	partitionConsumer, err := c.Consumer.ConsumePartition(c.Topic, c.Partition, sarama.OffsetNewest)
+	partitionConsumer, err := c.Consumer.ConsumePartition(c.Topic.String(), c.Partition, sarama.OffsetNewest)
 	if err != nil {
 		return fmt.Errorf("kafkaconsumer.Consumer consumer.ConsumePartition error: [%w]", err)
 	}
@@ -190,7 +189,7 @@ func (c Consumer) Start() error {
 // Worker drains message queue.
 func (c Consumer) Worker(workerID int, messages <-chan *sarama.ConsumerMessage) {
 	for msg := range messages {
-		switch KafkaTopicIdentifier(c.Topic) {
+		switch c.Topic {
 		case KafkaTopicIdentifierGitHub:
 			if err := c.StoreGitHubMessage(msg); err != nil {
 				c.Logger.Error("store github message error", "error", err, "worker id", workerID)
@@ -230,10 +229,10 @@ func WithLogger(l *slog.Logger) Option {
 }
 
 // WithTopic sets topic name.
-func WithTopic(s string) Option {
+func WithTopic(s KafkaTopicIdentifier) Option {
 	return func(consumer *Consumer) error {
-		if s == "" {
-			return fmt.Errorf("kafkaconsumer.WithLogger consumer.Topic error: [%w]", cerrors.ErrValueRequired)
+		if err := IsKafkaTopicValid(s); err != nil {
+			return fmt.Errorf("kafkaconsumer.WithTopic consumer.Topic error: [%w]", err)
 		}
 		consumer.Topic = s
 
@@ -244,14 +243,8 @@ func WithTopic(s string) Option {
 // WithBrokers sets brokers list.
 func WithBrokers(brokers []string) Option {
 	return func(consumer *Consumer) error {
-		if brokers == nil {
-			return fmt.Errorf("kafkaconsumer.WithBrokers consumer.Brokers error: [%w]", cerrors.ErrValueRequired)
-		}
-
-		for _, broker := range brokers {
-			if _, err := getenv.ValidateTCPNetworkAddress(broker); err != nil {
-				return fmt.Errorf("kafkaconsumer.WithBrokers getenv.ValidateTCPNetworkAddress error: [%w]", err)
-			}
+		if err := IsBrokersAreValid(brokers); err != nil {
+			return fmt.Errorf("kafkaconsumer.WithBrokers consumer.Brokers error: [%w]", err)
 		}
 
 		consumer.Brokers = make([]string, len(brokers))

@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"github.com/devchain-network/cauldron/internal/cerrors"
+	"github.com/devchain-network/cauldron/internal/kafkaconsumer"
 	"github.com/valyala/fasthttp"
+	"github.com/vigo/getenv"
 )
 
 //go:embed VERSION
@@ -20,8 +22,6 @@ const (
 	serverDefaultWriteTimeout = 10 * time.Second
 	serverDefaultIdleTimeout  = 15 * time.Second
 	serverDefaultListenAddr   = ":8000"
-
-	kpDefaultGitHubTopic = "github"
 
 	kpDefaultQueueSize = 100
 )
@@ -46,7 +46,7 @@ type Server struct {
 	FastHTTP         *fasthttp.Server
 	Handlers         map[string]MethodHandler
 	ListenAddr       string
-	KafkaGitHubTopic string
+	KafkaGitHubTopic kafkaconsumer.KafkaTopicIdentifier
 	KafkaBrokers     []string
 	ReadTimeout      time.Duration
 	WriteTimeout     time.Duration
@@ -115,6 +115,15 @@ func WithListenAddr(addr string) Option {
 		if addr == "" {
 			return fmt.Errorf("apiserver.WithListenAddr server.ListenAddr error: [%w]", cerrors.ErrValueRequired)
 		}
+
+		if _, err := getenv.ValidateTCPNetworkAddress(addr); err != nil {
+			return fmt.Errorf(
+				"apiserver.WithListenAddr getenv.ValidateTCPNetworkAddress error: [%w] [%w]",
+				err,
+				cerrors.ErrInvalid,
+			)
+		}
+
 		server.ListenAddr = addr
 
 		return nil
@@ -124,6 +133,10 @@ func WithListenAddr(addr string) Option {
 // WithReadTimeout sets read timeout.
 func WithReadTimeout(d time.Duration) Option {
 	return func(server *Server) error {
+		if d < 0 {
+			return fmt.Errorf("apiserver.WithReadTimeout server.ReadTimeout error: [%w]", cerrors.ErrInvalid)
+		}
+
 		server.ReadTimeout = d
 
 		return nil
@@ -133,6 +146,9 @@ func WithReadTimeout(d time.Duration) Option {
 // WithWriteTimeout sets write timeout.
 func WithWriteTimeout(d time.Duration) Option {
 	return func(server *Server) error {
+		if d < 0 {
+			return fmt.Errorf("apiserver.WithWriteTimeout server.WriteTimeout error: [%w]", cerrors.ErrInvalid)
+		}
 		server.WriteTimeout = d
 
 		return nil
@@ -142,6 +158,9 @@ func WithWriteTimeout(d time.Duration) Option {
 // WithIdleTimeout sets idle timeout.
 func WithIdleTimeout(d time.Duration) Option {
 	return func(server *Server) error {
+		if d < 0 {
+			return fmt.Errorf("apiserver.WithIdleTimeout server.IdleTimeout error: [%w]", cerrors.ErrInvalid)
+		}
 		server.IdleTimeout = d
 
 		return nil
@@ -151,8 +170,8 @@ func WithIdleTimeout(d time.Duration) Option {
 // WithKafkaBrokers sets kafka brokers list.
 func WithKafkaBrokers(brokers []string) Option {
 	return func(server *Server) error {
-		if brokers == nil {
-			return fmt.Errorf("apiserver.WithKafkaBrokers server.kafkaBrokers error: [%w]", cerrors.ErrValueRequired)
+		if err := kafkaconsumer.IsBrokersAreValid(brokers); err != nil {
+			return fmt.Errorf("apiserver.WithKafkaBrokers server.KafkaBrokers error: [%w]", err)
 		}
 
 		server.KafkaBrokers = make([]string, len(brokers))
@@ -163,13 +182,10 @@ func WithKafkaBrokers(brokers []string) Option {
 }
 
 // WithKafkaGitHubTopic sets kafka topic name for github webhooks.
-func WithKafkaGitHubTopic(s string) Option {
+func WithKafkaGitHubTopic(s kafkaconsumer.KafkaTopicIdentifier) Option {
 	return func(server *Server) error {
-		if s == "" {
-			return fmt.Errorf(
-				"apiserver.WithKafkaGitHubTopic server.KafkaGitHubTopic error: [%w]",
-				cerrors.ErrValueRequired,
-			)
+		if err := kafkaconsumer.IsKafkaTopicValid(s); err != nil {
+			return fmt.Errorf("apiserver.WithKafkaGitHubTopic server.KafkaGitHubTopic error: [%w]", err)
 		}
 		server.KafkaGitHubTopic = s
 
@@ -197,6 +213,10 @@ func New(options ...Option) (*Server, error) {
 
 	if server.Handlers == nil {
 		return nil, fmt.Errorf("apiserver.New server.Handlers error: [%w]", cerrors.ErrValueRequired)
+	}
+
+	if server.KafkaBrokers == nil {
+		return nil, fmt.Errorf("apiserver.New server.KafkaBrokers error: [%w]", cerrors.ErrValueRequired)
 	}
 
 	httpRouter := func(ctx *fasthttp.RequestCtx) {

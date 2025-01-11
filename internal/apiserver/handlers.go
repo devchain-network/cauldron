@@ -79,7 +79,7 @@ func GitHubWebhookHandler(opts *githubhandleroptions.HTTPHandler) fasthttp.Reque
 
 		messageKey := httpHeaders.DeliveryID.String()
 		message := &sarama.ProducerMessage{
-			Topic: opts.Topic,
+			Topic: opts.Topic.String(),
 			Key:   sarama.StringEncoder(messageKey),
 			Value: sarama.ByteEncoder(payloadBytes),
 			Headers: []sarama.RecordHeader{
