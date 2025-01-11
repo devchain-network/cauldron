@@ -30,11 +30,11 @@ type Storer interface {
 
 // Manager represents database manager.
 type Manager struct {
-	logger     *slog.Logger
+	Logger     *slog.Logger
 	Pool       *pgxpool.Pool
-	dsn        string
-	backOff    time.Duration
-	maxRetries uint8
+	DSN        string
+	BackOff    time.Duration
+	MaxRetries uint8
 }
 
 // Option represents option function type.
@@ -69,7 +69,7 @@ func WithDSN(s string) Option {
 		if s == "" {
 			return fmt.Errorf("storage.WithDSN error: [%w]", cerrors.ErrValueRequired)
 		}
-		m.dsn = s
+		m.DSN = s
 
 		return nil
 	}
@@ -81,7 +81,7 @@ func WithBackoff(d time.Duration) Option {
 		if d == 0 {
 			return fmt.Errorf("storage.WithBackoff error: [%w]", cerrors.ErrValueRequired)
 		}
-		m.backOff = d
+		m.BackOff = d
 
 		return nil
 	}
@@ -93,7 +93,7 @@ func WithMaxRetries(i int) Option {
 		if i > 255 || i < 0 {
 			return fmt.Errorf("storage.WithMaxRetries error: [%w]", cerrors.ErrInvalid)
 		}
-		m.maxRetries = uint8(i)
+		m.MaxRetries = uint8(i)
 
 		return nil
 	}
@@ -105,7 +105,7 @@ func WithLogger(l *slog.Logger) Option {
 		if l == nil {
 			return fmt.Errorf("storage.WithLogger error: [%w]", cerrors.ErrValueRequired)
 		}
-		m.logger = l
+		m.Logger = l
 
 		return nil
 	}
@@ -114,8 +114,8 @@ func WithLogger(l *slog.Logger) Option {
 // New instantiates new pgx connection pool.
 func New(options ...Option) (*Manager, error) {
 	manager := new(Manager)
-	manager.backOff = DefaultDBPingBackoff
-	manager.maxRetries = DefaultDBPingMaxRetries
+	manager.BackOff = DefaultDBPingBackoff
+	manager.MaxRetries = DefaultDBPingMaxRetries
 
 	for _, option := range options {
 		if err := option(manager); err != nil {
@@ -123,15 +123,15 @@ func New(options ...Option) (*Manager, error) {
 		}
 	}
 
-	if manager.dsn == "" {
-		return nil, fmt.Errorf("storage.New manager.dsn error: [%w]", cerrors.ErrValueRequired)
+	if manager.DSN == "" {
+		return nil, fmt.Errorf("storage.New manager.DSN error: [%w]", cerrors.ErrValueRequired)
 	}
 
-	if manager.logger == nil {
-		return nil, fmt.Errorf("storage.New manager.logger error: [%w]", cerrors.ErrValueRequired)
+	if manager.Logger == nil {
+		return nil, fmt.Errorf("storage.New manager.Logger error: [%w]", cerrors.ErrValueRequired)
 	}
 
-	config, err := pgxpool.ParseConfig(manager.dsn)
+	config, err := pgxpool.ParseConfig(manager.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("storage.New pgxpool.ParseConfig error: [%w]", err)
 	}
@@ -143,19 +143,19 @@ func New(options ...Option) (*Manager, error) {
 	}
 
 	var pingErr error
-	backOff := manager.backOff
-	for i := range manager.maxRetries {
+	backOff := manager.BackOff
+	for i := range manager.MaxRetries {
 		pingErr = pool.Ping(ctx)
 		if pingErr == nil {
-			manager.logger.Info("connected to database")
+			manager.Logger.Info("connected to database")
 
 			break
 		}
 
-		manager.logger.Error(
+		manager.Logger.Error(
 			"can not ping database",
 			"error", pingErr,
-			"retry", fmt.Sprintf("%d/%d", i, manager.maxRetries),
+			"retry", fmt.Sprintf("%d/%d", i, manager.MaxRetries),
 			"backoff", backOff.String(),
 		)
 		time.Sleep(backOff)
