@@ -31,7 +31,6 @@ services:
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_LOG4J_OPTS: '-Dlog4j.configuration=file:/opt/bitnami/kafka/config/log4j.properties'
-      KCP_TOPIC_GITHUB: "${KCP_TOPIC_GITHUB}"
 
 volumes:
   kafka_data:

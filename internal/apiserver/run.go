@@ -24,7 +24,6 @@ func Run() error {
 	listenAddr := getenv.TCPAddr("LISTEN_ADDR", serverDefaultListenAddr)
 	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
 	githubHMACSecret := getenv.String("GITHUB_HMAC_SECRET", "")
-	// kafkaTopicGitHub := getenv.String("KP_TOPIC_GITHUB", kpDefaultGitHubTopic)
 	brokersList := getenv.String("KCP_BROKERS", kafkaconsumer.DefaultKafkaBrokers)
 	producerMessageQueueSize := getenv.Int("KP_PRODUCER_QUEUE_SIZE", kpDefaultQueueSize)
 	backoff := getenv.Duration("KC_BACKOFF", kafkaconsumer.DefaultKafkaConsumerBackoff)
