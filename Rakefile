@@ -204,3 +204,19 @@ task lint: [:has_golangci_linter] do
 rescue Interrupt
   0
 end
+
+desc 'run tests'
+task :test do
+  system %{ go test -failfast -v -coverprofile=coverage.out ./... }
+  $CHILD_STATUS&.exitstatus || 1
+rescue Interrupt
+  0
+end
+
+desc 'run tests and show coverage'
+task :coverage do
+  system %{ go test -v -coverprofile=coverage.out ./... && go tool cover -html=coverage.out }
+  $CHILD_STATUS&.exitstatus || 1
+rescue Interrupt
+  0
+end
