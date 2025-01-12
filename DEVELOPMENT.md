@@ -2,6 +2,8 @@
 
 In this section, you can find the instructions needed for local development.
 
+---
+
 ## Requirements
 
 To run, test, or develop on your local machine, it's recommended to install
@@ -40,6 +42,8 @@ bundle config set --local path 'ruby-vendor/bundle'
 bundle config set --local bin 'bin'
 bundle
 ```
+
+---
 
 ## Environment Variables
 
@@ -124,6 +128,8 @@ export NGROK_PUBLIC_URL="<your-ngrok-public-url>"
 export NGROK_FORWARD="http://cauldron:8000" # must match with LISTEN_ADDR value (port)
 ```
 
+---
+
 ## Clone The Source for Development
 
 ```bash
@@ -133,7 +139,17 @@ cd cauldron/
 go mod download
 ```
 
-### Rake Tasks
+Install `pre-commit` hooks before you starting development:
+
+```bash
+pre-commit install
+```
+
+Open a new branch and do your thing!
+
+---
+
+## Rake Tasks
 
 If `ruby` is installed or available on your machine, you can leverage the power
 of `rake tasks`:
@@ -254,7 +270,9 @@ rake docker:run:server             # run server
 - `docker:run:*`: runs containers locally, testing purposes.
 - `docker:compose:*`: ups or downs whole infrastructure with services.
 
-### Infrastructure Diagram
+---
+
+## Infrastructure Diagram
 
 ```mermaid
 graph TD
@@ -281,7 +299,8 @@ graph TD
   postgresql_db ---|volumes| postgres-data
 ```
 
-Instead of running each service independently, use:
+Service sequence diagrams can be found [here][003]. Instead of running each
+service independently, use:
 
 ```bash
 docker compose -f docker-compose.infra.yml up    # or,
@@ -302,3 +321,4 @@ purposes, both were producing too much information, little clean up required.
 
 [001]: https://brew.sh/
 [002]: https://orbstack.dev/
+[003]: https://github.com/devchain-network/cauldron/blob/main/SEQUENCE_DIAGRAMS.md
