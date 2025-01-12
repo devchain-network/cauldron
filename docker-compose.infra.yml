@@ -62,9 +62,22 @@ services:
       - cauldron
     networks:
       - devchain-network
+  
+  postgresql_db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_DB: "${POSTGRES_DB}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+    volumes:
+      - "postgres-data:/var/lib/postgresql/data/"
+    networks:
+      - devchain-network
 
 volumes:
   kafka_data:
+    driver: local
+  postgres-data:
     driver: local
 
 networks:
