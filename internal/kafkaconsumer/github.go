@@ -44,6 +44,15 @@ func (Consumer) UnmarshalPayload(event github.Event, value []byte) (any, error) 
 	var payload any
 
 	switch event { //nolint:exhaustive
+	case github.PingEvent:
+		var pl github.PingPayload
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf(
+				"kafkaconsumer.UnmarshalPayload github.PingPayload error: [%w]",
+				err,
+			)
+		}
+		payload = pl
 	case github.CommitCommentEvent:
 		var pl github.CommitCommentPayload
 		if err := json.Unmarshal(value, &pl); err != nil {
@@ -151,6 +160,8 @@ func (Consumer) UnmarshalPayload(event github.Event, value []byte) (any, error) 
 // ExtractUserInfo extracts user information from payload.
 func (Consumer) ExtractUserInfo(payload any) (int64, string) {
 	switch p := payload.(type) {
+	case github.PingPayload:
+		return p.Sender.ID, p.Sender.Login
 	case github.CommitCommentPayload:
 		return p.Sender.ID, p.Sender.Login
 	case github.CreatePayload:
