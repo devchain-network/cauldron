@@ -28,3 +28,4 @@ ENTRYPOINT ["/consumer"]
 
 LABEL org.opencontainers.image.authors="Uğur vigo Özyılmazel <vigo@devchain.network>"
 LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.source="https://github.com/devchain-network/cauldron"
