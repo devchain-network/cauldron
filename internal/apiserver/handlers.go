@@ -38,6 +38,7 @@ func GitHubWebhookHandler(opts *githubhandleroptions.HTTPHandler) fasthttp.Reque
 		}
 
 		listenEvents := []github.Event{
+			github.PingEvent,
 			github.CommitCommentEvent,
 			github.CreateEvent,
 			github.DeleteEvent,

@@ -9,6 +9,7 @@
 **/bin
 **/Dockerfile*
 **/docker-compose*
+**/docker-stack*
 **/tmp*
 **/.pre-commit-config.yaml
 **/.bumpversion.toml
