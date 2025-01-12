@@ -60,6 +60,7 @@ func GitHubWebhookHandler(opts *githubhandleroptions.HTTPHandler) fasthttp.Reque
 				"error", err,
 				"event", httpHeaders.Event,
 			)
+			ctx.SetStatusCode(fasthttp.StatusBadRequest)
 
 			return
 		}
@@ -73,6 +74,7 @@ func GitHubWebhookHandler(opts *githubhandleroptions.HTTPHandler) fasthttp.Reque
 		payloadBytes, err := json.Marshal(payload)
 		if err != nil {
 			opts.CommonHandler.Logger.Error("github webhook payload marshall error", "error", err)
+			ctx.SetStatusCode(fasthttp.StatusInternalServerError)
 
 			return
 		}
