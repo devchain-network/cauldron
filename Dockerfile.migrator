@@ -1,0 +1,34 @@
+FROM golang:1.23-alpine AS builder
+
+WORKDIR /build
+
+COPY ./go.mod ./go.sum /build/
+
+COPY ./migrations ./migrations
+
+RUN go mod download
+
+COPY . /build
+
+ARG GOOS
+ARG GOARCH
+RUN CGO_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -o migrator cmd/migrator/main.go
+
+FROM busybox:latest
+ARG UID=10001
+RUN adduser \
+    --disabled-password \
+    --gecos "" \
+    --home "/nonexistent" \
+    --shell "/sbin/nologin" \
+    --no-create-home \
+    --uid "${UID}" \
+    appuser
+USER appuser
+COPY --from=builder /build/migrations /migrations
+COPY --from=builder /build/migrator /migrator
+
+ENTRYPOINT ["/migrator"]
+
+LABEL org.opencontainers.image.authors="Uğur vigo Özyılmazel <vigo@devchain.network>"
+LABEL org.opencontainers.image.licenses="MIT"

@@ -69,6 +69,18 @@ namespace :docker do
     rescue Interrupt
       0
     end
+
+    desc 'run migrator'
+    task :migrator do
+      system %{
+        docker run \
+          --env DATABASE_URL=${DATABASE_URL_DOCKER_TO_HOST} \
+          devchain-migrator:latest
+      }
+      $CHILD_STATUS&.exitstatus || 1
+    rescue Interrupt
+      0
+    end
   end
   namespace :build do
     desc 'build server'
@@ -82,6 +94,14 @@ namespace :docker do
     desc 'build github consumer'
     task :github_consumer do
       system %{ docker build -f Dockerfile.github-consumer -t devchain-gh-consumer:latest . }
+      $CHILD_STATUS&.exitstatus || 1
+    rescue Interrupt
+      0
+    end
+
+    desc 'build migrator'
+    task :migrator do
+      system %{ docker build -f Dockerfile.migrator -t devchain-migrator:latest . }
       $CHILD_STATUS&.exitstatus || 1
     rescue Interrupt
       0

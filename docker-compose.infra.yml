@@ -1,4 +1,51 @@
 services:
+  postgresql_db:
+    image: postgres:17
+    user: postgres
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5433:5432" # map container's 5432 to host's 5433
+    volumes:
+      - "postgres-data:/var/lib/postgresql/data/"
+    networks:
+      - devchain-network
+
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrator
+    environment:
+      DATABASE_URL: "${DATABASE_URL_INFRA}"
+    depends_on:
+      postgresql_db:
+        condition: service_healthy
+    networks:
+      - devchain-network
+    restart: "no"
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    restart: unless-stopped
+    command:
+      - "http"
+      - "${NGROK_FORWARD}"
+      - "--url=${NGROK_PUBLIC_URL}"
+    environment:
+      NGROK_AUTHTOKEN: "${NGROK_AUTHTOKEN}"
+    ports:
+      - "4040:4040"
+    depends_on:
+      - cauldron
+    networks:
+      - devchain-network
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     depends_on:
@@ -57,14 +104,19 @@ services:
     environment:
       KC_TOPIC: "github"
       KCP_BROKERS: "kafka:9092"
+      DATABASE_URL: "${DATABASE_URL_INFRA}"
     depends_on:
       - kafka
       - cauldron
+      - postgresql_db
+      - migrator
     networks:
       - devchain-network
 
 volumes:
   kafka_data:
+    driver: local
+  postgres-data:
     driver: local
 
 networks:
