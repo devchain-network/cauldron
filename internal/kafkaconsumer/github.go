@@ -11,194 +11,198 @@ import (
 	"github.com/google/uuid"
 )
 
-// StoreGitHubMessage stores consumed message to database.
-func (c Consumer) StoreGitHubMessage(msg *sarama.ConsumerMessage) error {
+// ExtractHeadersFromMessage extracts Kafka message headers.
+func (Consumer) ExtractHeadersFromMessage(msg *sarama.ConsumerMessage) (*storage.GitHubWebhookData, error) {
 	deliveryID, err := uuid.Parse(string(msg.Key))
 	if err != nil {
-		return fmt.Errorf("kafkaconsumer.storeGitHubMessage deliveryID error: [%w]", err)
+		return nil, fmt.Errorf("kafkaconsumer.ExtractHeadersFromMessage deliveryID error: [%w]", err)
 	}
 
 	targetID, err := strconv.ParseUint(string(msg.Headers[2].Value), 10, 64)
 	if err != nil {
-		return fmt.Errorf("kafkaconsumer.storeGitHubMessage targetID error: [%w]", err)
+		return nil, fmt.Errorf("kafkaconsumer.ExtractHeadersFromMessage targetID error: [%w]", err)
 	}
 
 	hookID, err := strconv.ParseUint(string(msg.Headers[3].Value), 10, 64)
 	if err != nil {
-		return fmt.Errorf("kafkaconsumer.storeGitHubMessage hookID error: [%w]", err)
+		return nil, fmt.Errorf("kafkaconsumer.ExtractHeadersFromMessage hookID error: [%w]", err)
 	}
 
-	target := string(msg.Headers[1].Value)
-	event := github.Event(string(msg.Headers[0].Value))
-	offset := msg.Offset
-	partition := msg.Partition
+	return &storage.GitHubWebhookData{
+		DeliveryID: deliveryID,
+		TargetID:   targetID,
+		HookID:     hookID,
+		Target:     string(msg.Headers[1].Value),
+		Event:      github.Event(string(msg.Headers[0].Value)),
+		Offset:     msg.Offset,
+		Partition:  msg.Partition,
+	}, nil
+}
 
+// UnmarshalPayload unmarshals incoming value to event related struct.
+func (Consumer) UnmarshalPayload(event github.Event, value []byte) (any, error) {
 	var payload any
 
 	switch event { //nolint:exhaustive
 	case github.CommitCommentEvent:
 		var pl github.CommitCommentPayload
-		if err = json.Unmarshal(msg.Value, &pl); err != nil {
-			return fmt.Errorf(
-				"kafkaconsumer.storeGitHubMessage github.CommitCommentPayload error: [%w]",
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf(
+				"kafkaconsumer.UnmarshalPayload github.CommitCommentPayload error: [%w]",
 				err,
 			)
 		}
 		payload = pl
 	case github.CreateEvent:
 		var pl github.CreatePayload
-		if err = json.Unmarshal(msg.Value, &pl); err != nil {
-			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.CreatePayload error: [%w]", err)
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.CreatePayload error: [%w]", err)
 		}
 		payload = pl
 	case github.DeleteEvent:
 		var pl github.DeletePayload
-		if err = json.Unmarshal(msg.Value, &pl); err != nil {
-			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.DeletePayload error: [%w]", err)
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.DeletePayload error: [%w]", err)
 		}
 		payload = pl
 	case github.ForkEvent:
 		var pl github.ForkPayload
-		if err = json.Unmarshal(msg.Value, &pl); err != nil {
-			return fmt.Errorf(
-				"kafkaconsumer.storeGitHubMessage github.ForkPayload error: [%w]",
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf(
+				"kafkaconsumer.UnmarshalPayload github.ForkPayload error: [%w]",
 				err,
 			)
 		}
 		payload = pl
 	case github.GollumEvent:
 		var pl github.GollumPayload
-		if err = json.Unmarshal(msg.Value, &pl); err != nil {
-			return fmt.Errorf(
-				"kafkaconsumer.storeGitHubMessage github.GollumPayload error: [%w]",
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf(
+				"kafkaconsumer.UnmarshalPayload github.GollumPayload error: [%w]",
 				err,
 			)
 		}
 		payload = pl
 	case github.IssueCommentEvent:
 		var pl github.IssueCommentPayload
-		if err = json.Unmarshal(msg.Value, &pl); err != nil {
-			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.IssueCommentPayload error: [%w]", err)
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.IssueCommentPayload error: [%w]", err)
 		}
 		payload = pl
 	case github.IssuesEvent:
 		var pl github.IssuesPayload
-		if err = json.Unmarshal(msg.Value, &pl); err != nil {
-			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.IssuesPayload error: [%w]", err)
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.IssuesPayload error: [%w]", err)
 		}
 		payload = pl
 	case github.PullRequestEvent:
 		var pl github.PullRequestPayload
-		if err = json.Unmarshal(msg.Value, &pl); err != nil {
-			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.PullRequestPayload error: [%w]", err)
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.PullRequestPayload error: [%w]", err)
 		}
 		payload = pl
 	case github.PullRequestReviewCommentEvent:
 		var pl github.PullRequestReviewCommentPayload
-		if err = json.Unmarshal(msg.Value, &pl); err != nil {
-			return fmt.Errorf(
-				"kafkaconsumer.storeGitHubMessage github.PullRequestReviewCommentPayload error: [%w]",
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf(
+				"kafkaconsumer.UnmarshalPayload github.PullRequestReviewCommentPayload error: [%w]",
 				err,
 			)
 		}
 		payload = pl
 	case github.PullRequestReviewEvent:
 		var pl github.PullRequestReviewPayload
-		if err = json.Unmarshal(msg.Value, &pl); err != nil {
-			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.PullRequestReviewPayload error: [%w]", err)
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.PullRequestReviewPayload error: [%w]", err)
 		}
 		payload = pl
 	case github.PushEvent:
 		var pl github.PushPayload
-		if err = json.Unmarshal(msg.Value, &pl); err != nil {
-			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.PushPayload error: [%w]", err)
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.PushPayload error: [%w]", err)
 		}
 		payload = pl
 	case github.ReleaseEvent:
 		var pl github.ReleasePayload
-		if err = json.Unmarshal(msg.Value, &pl); err != nil {
-			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.ReleasePayload error: [%w]", err)
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.ReleasePayload error: [%w]", err)
 		}
 		payload = pl
 	case github.StarEvent:
 		var pl github.StarPayload
-		if err = json.Unmarshal(msg.Value, &pl); err != nil {
-			return fmt.Errorf("kafkaconsumer.storeGitHubMessage github.StarPayload error: [%w]", err)
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.StarPayload error: [%w]", err)
 		}
 		payload = pl
 	case github.WatchEvent:
 		var pl github.WatchPayload
-		if err = json.Unmarshal(msg.Value, &pl); err != nil {
-			return fmt.Errorf(
-				"kafkaconsumer.storeGitHubMessage github.WatchPayload error: [%w]",
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf(
+				"kafkaconsumer.UnmarshalPayload github.WatchPayload error: [%w]",
 				err,
 			)
 		}
 		payload = pl
 	}
 
-	var userID int64
-	var userLogin string
+	return payload, nil
+}
 
-	switch payload := payload.(type) {
+// ExtractUserInfo extracts user information from payload.
+func (Consumer) ExtractUserInfo(payload any) (int64, string) {
+	switch p := payload.(type) {
 	case github.CommitCommentPayload:
-		userID = payload.Sender.ID
-		userLogin = payload.Sender.Login
+		return p.Sender.ID, p.Sender.Login
 	case github.CreatePayload:
-		userID = payload.Sender.ID
-		userLogin = payload.Sender.Login
+		return p.Sender.ID, p.Sender.Login
 	case github.DeletePayload:
-		userID = payload.Sender.ID
-		userLogin = payload.Sender.Login
+		return p.Sender.ID, p.Sender.Login
 	case github.ForkPayload:
-		userID = payload.Sender.ID
-		userLogin = payload.Sender.Login
+		return p.Sender.ID, p.Sender.Login
 	case github.GollumPayload:
-		userID = payload.Sender.ID
-		userLogin = payload.Sender.Login
+		return p.Sender.ID, p.Sender.Login
 	case github.IssueCommentPayload:
-		userID = payload.Sender.ID
-		userLogin = payload.Sender.Login
+		return p.Sender.ID, p.Sender.Login
 	case github.IssuesPayload:
-		userID = payload.Sender.ID
-		userLogin = payload.Sender.Login
+		return p.Sender.ID, p.Sender.Login
 	case github.PullRequestPayload:
-		userID = payload.Sender.ID
-		userLogin = payload.Sender.Login
+		return p.Sender.ID, p.Sender.Login
 	case github.PullRequestReviewCommentPayload:
-		userID = payload.Sender.ID
-		userLogin = payload.Sender.Login
+		return p.Sender.ID, p.Sender.Login
 	case github.PullRequestReviewPayload:
-		userID = payload.Sender.ID
-		userLogin = payload.Sender.Login
+		return p.Sender.ID, p.Sender.Login
 	case github.PushPayload:
-		userID = payload.Sender.ID
-		userLogin = payload.Sender.Login
+		return p.Sender.ID, p.Sender.Login
 	case github.ReleasePayload:
-		userID = payload.Sender.ID
-		userLogin = payload.Sender.Login
+		return p.Sender.ID, p.Sender.Login
 	case github.StarPayload:
-		userID = payload.Sender.ID
-		userLogin = payload.Sender.Login
+		return p.Sender.ID, p.Sender.Login
 	case github.WatchPayload:
-		userID = payload.Sender.ID
-		userLogin = payload.Sender.Login
+		return p.Sender.ID, p.Sender.Login
 	}
 
-	storagePayload := storage.GitHubWebhookData{
-		DeliveryID: deliveryID,
-		Event:      event,
-		Target:     target,
-		TargetID:   targetID,
-		HookID:     hookID,
-		Offset:     offset,
-		Partition:  partition,
-		UserID:     userID,
-		UserLogin:  userLogin,
-		Payload:    payload,
+	return 0, "user-not-found"
+}
+
+// StoreGitHubMessage stores consumed message to database.
+func (c Consumer) StoreGitHubMessage(msg *sarama.ConsumerMessage) error {
+	storagePayload, err := c.ExtractHeadersFromMessage(msg)
+	if err != nil {
+		return fmt.Errorf("kafkaconsumer.storeGitHubMessage ExtractHeadersFromMessage error: [%w]", err)
 	}
 
-	if err = c.Storage.GitHubStore(&storagePayload); err != nil {
+	payload, err := c.UnmarshalPayload(storagePayload.Event, msg.Value)
+	if err != nil {
+		return fmt.Errorf("kafkaconsumer.storeGitHubMessage UnmarshalPayload error: [%w]", err)
+	}
+
+	userID, userLogin := c.ExtractUserInfo(payload)
+
+	storagePayload.UserID = userID
+	storagePayload.UserLogin = userLogin
+	storagePayload.Payload = payload
+
+	if err = c.Storage.GitHubStore(storagePayload); err != nil {
 		return fmt.Errorf("kafkaconsumer.storeGitHubMessage Storage.GitHubStore error: [%w]", err)
 	}
 
