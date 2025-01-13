@@ -47,4 +47,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/go-playground/webhooks/v6 => github.com/devchain-network/webhooks/v6 v6.0.0-20250110190819-cfa5365c0972
+replace github.com/go-playground/webhooks/v6 => github.com/devchain-network/webhooks/v6 v6.0.0-20250113163359-43c20e82b17e
