@@ -40,19 +40,42 @@ func (Consumer) ExtractHeadersFromMessage(msg *sarama.ConsumerMessage) (*storage
 }
 
 // UnmarshalPayload unmarshals incoming value to event related struct.
-func (Consumer) UnmarshalPayload(event github.Event, value []byte) (any, error) {
+func (Consumer) UnmarshalPayload(event github.Event, value []byte, target string) (any, error) {
 	var payload any
 
 	switch event { //nolint:exhaustive
 	case github.PingEvent:
-		var pl github.PingPayload
-		if err := json.Unmarshal(value, &pl); err != nil {
-			return nil, fmt.Errorf(
-				"kafkaconsumer.UnmarshalPayload github.PingPayload error: [%w]",
-				err,
-			)
+
+		switch github.InstallationTargetType(target) {
+		case github.InstallationTargetTypeOrganization:
+			var pl github.PingOrganizationPayload
+			if err := json.Unmarshal(value, &pl); err != nil {
+				return nil, fmt.Errorf(
+					"kafkaconsumer.UnmarshalPayload github.PingOrganizationPayload error: [%w]",
+					err,
+				)
+			}
+			payload = pl
+		case github.InstallationTargetTypeRepository:
+			var pl github.PingPayload
+			if err := json.Unmarshal(value, &pl); err != nil {
+				return nil, fmt.Errorf(
+					"kafkaconsumer.UnmarshalPayload github.PingPayload error: [%w]",
+					err,
+				)
+			}
+			payload = pl
+		default:
+			var pl github.PingPayload
+			if err := json.Unmarshal(value, &pl); err != nil {
+				return nil, fmt.Errorf(
+					"kafkaconsumer.UnmarshalPayload github.PingPayload error: [%w]",
+					err,
+				)
+			}
+			payload = pl
 		}
-		payload = pl
+
 	case github.CommitCommentEvent:
 		var pl github.CommitCommentPayload
 		if err := json.Unmarshal(value, &pl); err != nil {
@@ -202,7 +225,7 @@ func (c Consumer) StoreGitHubMessage(msg *sarama.ConsumerMessage) error {
 		return fmt.Errorf("kafkaconsumer.storeGitHubMessage ExtractHeadersFromMessage error: [%w]", err)
 	}
 
-	payload, err := c.UnmarshalPayload(storagePayload.Event, msg.Value)
+	payload, err := c.UnmarshalPayload(storagePayload.Event, msg.Value, storagePayload.Target)
 	if err != nil {
 		return fmt.Errorf("kafkaconsumer.storeGitHubMessage UnmarshalPayload error: [%w]", err)
 	}
