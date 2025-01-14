@@ -44,8 +44,75 @@ func (Consumer) UnmarshalPayload(event github.Event, value []byte, target string
 	var payload any
 
 	switch event { //nolint:exhaustive
-	case github.PingEvent:
+	case github.CommitCommentEvent:
+		var pl github.CommitCommentPayload
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf(
+				"kafkaconsumer.UnmarshalPayload github.CommitCommentPayload error: [%w]",
+				err,
+			)
+		}
+		payload = pl
 
+	case github.CreateEvent:
+		var pl github.CreatePayload
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.CreatePayload error: [%w]", err)
+		}
+		payload = pl
+
+	case github.DeleteEvent:
+		var pl github.DeletePayload
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.DeletePayload error: [%w]", err)
+		}
+		payload = pl
+
+	case github.DependabotAlertEvent:
+		var pl github.DependabotAlertPayload
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf(
+				"kafkaconsumer.UnmarshalPayload github.DependabotAlertPayload error: [%w]",
+				err,
+			)
+		}
+		payload = pl
+
+	case github.ForkEvent:
+		var pl github.ForkPayload
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf(
+				"kafkaconsumer.UnmarshalPayload github.ForkPayload error: [%w]",
+				err,
+			)
+		}
+		payload = pl
+
+	case github.GollumEvent:
+		var pl github.GollumPayload
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf(
+				"kafkaconsumer.UnmarshalPayload github.GollumPayload error: [%w]",
+				err,
+			)
+		}
+		payload = pl
+
+	case github.IssueCommentEvent:
+		var pl github.IssueCommentPayload
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.IssueCommentPayload error: [%w]", err)
+		}
+		payload = pl
+
+	case github.IssuesEvent:
+		var pl github.IssuesPayload
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.IssuesPayload error: [%w]", err)
+		}
+		payload = pl
+
+	case github.PingEvent:
 		switch github.InstallationTargetType(target) {
 		case github.InstallationTargetTypeOrganization:
 			var pl github.PingOrganizationPayload
@@ -76,63 +143,13 @@ func (Consumer) UnmarshalPayload(event github.Event, value []byte, target string
 			payload = pl
 		}
 
-	case github.CommitCommentEvent:
-		var pl github.CommitCommentPayload
-		if err := json.Unmarshal(value, &pl); err != nil {
-			return nil, fmt.Errorf(
-				"kafkaconsumer.UnmarshalPayload github.CommitCommentPayload error: [%w]",
-				err,
-			)
-		}
-		payload = pl
-	case github.CreateEvent:
-		var pl github.CreatePayload
-		if err := json.Unmarshal(value, &pl); err != nil {
-			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.CreatePayload error: [%w]", err)
-		}
-		payload = pl
-	case github.DeleteEvent:
-		var pl github.DeletePayload
-		if err := json.Unmarshal(value, &pl); err != nil {
-			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.DeletePayload error: [%w]", err)
-		}
-		payload = pl
-	case github.ForkEvent:
-		var pl github.ForkPayload
-		if err := json.Unmarshal(value, &pl); err != nil {
-			return nil, fmt.Errorf(
-				"kafkaconsumer.UnmarshalPayload github.ForkPayload error: [%w]",
-				err,
-			)
-		}
-		payload = pl
-	case github.GollumEvent:
-		var pl github.GollumPayload
-		if err := json.Unmarshal(value, &pl); err != nil {
-			return nil, fmt.Errorf(
-				"kafkaconsumer.UnmarshalPayload github.GollumPayload error: [%w]",
-				err,
-			)
-		}
-		payload = pl
-	case github.IssueCommentEvent:
-		var pl github.IssueCommentPayload
-		if err := json.Unmarshal(value, &pl); err != nil {
-			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.IssueCommentPayload error: [%w]", err)
-		}
-		payload = pl
-	case github.IssuesEvent:
-		var pl github.IssuesPayload
-		if err := json.Unmarshal(value, &pl); err != nil {
-			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.IssuesPayload error: [%w]", err)
-		}
-		payload = pl
 	case github.PullRequestEvent:
 		var pl github.PullRequestPayload
 		if err := json.Unmarshal(value, &pl); err != nil {
 			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.PullRequestPayload error: [%w]", err)
 		}
 		payload = pl
+
 	case github.PullRequestReviewCommentEvent:
 		var pl github.PullRequestReviewCommentPayload
 		if err := json.Unmarshal(value, &pl); err != nil {
@@ -142,30 +159,42 @@ func (Consumer) UnmarshalPayload(event github.Event, value []byte, target string
 			)
 		}
 		payload = pl
+
 	case github.PullRequestReviewEvent:
 		var pl github.PullRequestReviewPayload
 		if err := json.Unmarshal(value, &pl); err != nil {
 			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.PullRequestReviewPayload error: [%w]", err)
 		}
 		payload = pl
+
 	case github.PushEvent:
 		var pl github.PushPayload
 		if err := json.Unmarshal(value, &pl); err != nil {
 			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.PushPayload error: [%w]", err)
 		}
 		payload = pl
+
 	case github.ReleaseEvent:
 		var pl github.ReleasePayload
 		if err := json.Unmarshal(value, &pl); err != nil {
 			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.ReleasePayload error: [%w]", err)
 		}
 		payload = pl
+
+	case github.RepositoryEvent:
+		var pl github.RepositoryPayload
+		if err := json.Unmarshal(value, &pl); err != nil {
+			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.RepositoryPayload error: [%w]", err)
+		}
+		payload = pl
+
 	case github.StarEvent:
 		var pl github.StarPayload
 		if err := json.Unmarshal(value, &pl); err != nil {
 			return nil, fmt.Errorf("kafkaconsumer.UnmarshalPayload github.StarPayload error: [%w]", err)
 		}
 		payload = pl
+
 	case github.WatchEvent:
 		var pl github.WatchPayload
 		if err := json.Unmarshal(value, &pl); err != nil {
@@ -183,34 +212,54 @@ func (Consumer) UnmarshalPayload(event github.Event, value []byte, target string
 // ExtractUserInfo extracts user information from payload.
 func (Consumer) ExtractUserInfo(payload any) (int64, string) {
 	switch p := payload.(type) {
-	case github.PingPayload:
-		return p.Sender.ID, p.Sender.Login
 	case github.CommitCommentPayload:
 		return p.Sender.ID, p.Sender.Login
+
 	case github.CreatePayload:
 		return p.Sender.ID, p.Sender.Login
+
 	case github.DeletePayload:
 		return p.Sender.ID, p.Sender.Login
+
+	case github.DependabotAlertPayload:
+		return int64(p.Sender.ID), p.Sender.Login
+
 	case github.ForkPayload:
 		return p.Sender.ID, p.Sender.Login
+
 	case github.GollumPayload:
 		return p.Sender.ID, p.Sender.Login
+
 	case github.IssueCommentPayload:
 		return p.Sender.ID, p.Sender.Login
+
 	case github.IssuesPayload:
 		return p.Sender.ID, p.Sender.Login
+
+	case github.PingPayload:
+		return p.Sender.ID, p.Sender.Login
+
 	case github.PullRequestPayload:
 		return p.Sender.ID, p.Sender.Login
+
 	case github.PullRequestReviewCommentPayload:
 		return p.Sender.ID, p.Sender.Login
+
 	case github.PullRequestReviewPayload:
 		return p.Sender.ID, p.Sender.Login
+
 	case github.PushPayload:
 		return p.Sender.ID, p.Sender.Login
+
 	case github.ReleasePayload:
 		return p.Sender.ID, p.Sender.Login
+
+	case github.RepositoryPayload:
+		return p.Sender.ID, p.Sender.Login
+
 	case github.StarPayload:
 		return p.Sender.ID, p.Sender.Login
+
 	case github.WatchPayload:
 		return p.Sender.ID, p.Sender.Login
 	}

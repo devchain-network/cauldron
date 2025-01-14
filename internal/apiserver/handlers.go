@@ -31,32 +31,38 @@ func GitHubWebhookHandler(opts *githubhandleroptions.HTTPHandler) fasthttp.Reque
 
 		httpHeaders := opts.ParseRequestHeaders(httpReq.Header)
 		if httpHeaders.DeliveryID == uuid.Nil {
-			opts.CommonHandler.Logger.Error("invalid X-Github-Delivery")
-			ctx.SetStatusCode(fasthttp.StatusBadRequest)
+			opts.CommonHandler.Logger.Error(
+				"unsupported X-Github-Delivery",
+				"value",
+				httpHeaders.DeliveryID,
+			)
+			ctx.SetStatusCode(fasthttp.StatusAccepted)
 
 			return
 		}
 
 		listenEvents := []github.Event{
-			github.PingEvent,
 			github.CommitCommentEvent,
 			github.CreateEvent,
 			github.DeleteEvent,
+			github.DependabotAlertEvent,
 			github.ForkEvent,
 			github.GollumEvent,
 			github.IssueCommentEvent,
 			github.IssuesEvent,
+			github.PingEvent,
 			github.PullRequestEvent,
 			github.PullRequestReviewCommentEvent,
 			github.PullRequestReviewEvent,
 			github.PushEvent,
 			github.ReleaseEvent,
+			github.RepositoryEvent,
 			github.StarEvent,
 			github.WatchEvent,
 		}
 		payload, err := opts.Webhook.Parse(&httpReq, listenEvents...)
 		if err != nil {
-			opts.CommonHandler.Logger.Info(
+			opts.CommonHandler.Logger.Error(
 				"github webhook parse error",
 				"error", err,
 				"event", httpHeaders.Event,
@@ -88,7 +94,10 @@ func GitHubWebhookHandler(opts *githubhandleroptions.HTTPHandler) fasthttp.Reque
 			Headers: []sarama.RecordHeader{
 				{Key: []byte("event"), Value: []byte(httpHeaders.Event)},
 				{Key: []byte("target-type"), Value: []byte(httpHeaders.TargetType)},
-				{Key: []byte("target-id"), Value: []byte(strconv.FormatUint(httpHeaders.TargetID, 10))},
+				{
+					Key:   []byte("target-id"),
+					Value: []byte(strconv.FormatUint(httpHeaders.TargetID, 10)),
+				},
 				{Key: []byte("hook-id"), Value: []byte(strconv.FormatUint(httpHeaders.HookID, 10))},
 			},
 		}
@@ -97,7 +106,11 @@ func GitHubWebhookHandler(opts *githubhandleroptions.HTTPHandler) fasthttp.Reque
 		case opts.CommonHandler.ProducerMessageQueue <- message:
 			opts.CommonHandler.Logger.Info("github webhook message enqueued for processing")
 		default:
-			opts.CommonHandler.Logger.Warn("github webhook message queue is full, dropping", "message", message)
+			opts.CommonHandler.Logger.Warn(
+				"github webhook message queue is full, dropping",
+				"message",
+				message,
+			)
 		}
 
 		opts.CommonHandler.Logger.Info("github webhook received successfully")
