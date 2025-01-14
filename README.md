@@ -26,6 +26,7 @@ Applies to repositories and organizations.
 | `commit_comment`              | Commit or diff commented on |
 | `create`                      | Branch or Tag creation |
 | `delete`                      | Branch or Tag deletion |
+| `dependabot_alert`            | This event occurs when there is activity relating to Dependabot alerts |
 | `fork`                        | Repository forked |
 | `gollum`                      | Wiki page updated |
 | `issue_comment`               | Issue comment created, edited, or deleted |
