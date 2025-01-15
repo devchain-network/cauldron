@@ -111,7 +111,7 @@ export KC_BACKOFF="2s"
 export KC_MAX_RETRIES="10"
 
 # database variables, works for local postgresql
-export DATABASE_NAME="devchain-webhook"
+export DATABASE_NAME="devchain_webhook"
 export DATABASE_URL="postgres://localhost:5432/${DATABASE_NAME}?sslmode=disable&timezone=UTC"
 
 # postgresql runs on infra/docker
@@ -311,7 +311,7 @@ Now you can access:
 
 - Kafka UI: `http://127.0.0.1:8080/`
 - Ngrok: `http://127.0.0.1:4040`
-- PostgreSQL: `PGPASSWORD="${POSTGRES_PASSWORD}" psql -h localhost -p 5433 -U postgres -d devchain-webhook`
+- PostgreSQL: `PGPASSWORD="${POSTGRES_PASSWORD}" psql -h localhost -p 5433 -U postgres -d devchain_webhook`
 
 For PostgreSQL, `5433` is exposed in container to avoid conflicts with the
 local PostgreSQL instance.
