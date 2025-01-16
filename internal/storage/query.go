@@ -1,6 +1,6 @@
 package storage
 
-const githubWebhookQuery = `
+const gitHubStoreQuery = `
 INSERT INTO github (
 	delivery_id, 
 	event, 

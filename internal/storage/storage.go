@@ -48,7 +48,7 @@ type Option func(*Manager) error
 func (m Manager) GitHubStore(data *GitHubWebhookData) error {
 	_, err := m.Pool.Exec(
 		context.Background(),
-		githubWebhookQuery,
+		gitHubStoreQuery,
 		data.DeliveryID,
 		data.Event,
 		data.Target,
