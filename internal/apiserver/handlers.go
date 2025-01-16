@@ -67,7 +67,7 @@ func GitHubWebhookHandler(opts *githubhandleroptions.HTTPHandler) fasthttp.Reque
 				"error", err,
 				"event", httpHeaders.Event,
 			)
-			ctx.SetStatusCode(fasthttp.StatusBadRequest)
+			ctx.SetStatusCode(fasthttp.StatusAccepted)
 
 			return
 		}

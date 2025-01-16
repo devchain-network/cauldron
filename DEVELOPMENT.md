@@ -319,6 +319,16 @@ local PostgreSQL instance.
 Logging for **kafka** and **kafka-ui** is set to `error` only. Due to development
 purposes, both were producing too much information, little clean up required.
 
+---
+
+## Database Migrations
+
+Add new migration:
+
+```bash
+migrate create -ext sql -dir migrations -seq <name>
+```
+
 [001]: https://brew.sh/
 [002]: https://orbstack.dev/
 [003]: https://github.com/devchain-network/cauldron/blob/main/SEQUENCE_DIAGRAMS.md

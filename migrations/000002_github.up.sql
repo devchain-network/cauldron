@@ -3,7 +3,7 @@ BEGIN;
 -- Create event_type ENUM
 -- https://github.com/go-playground/webhooks/blob/master/github/github.go
 --
-CREATE TYPE event_type AS ENUM (
+CREATE TYPE github_event_type AS ENUM (
     'check_run',
     'check_suite',
     'commit_comment',
@@ -54,31 +54,34 @@ CREATE TYPE event_type AS ENUM (
     'code_scanning_alert'
 );
 
-CREATE TYPE target_type AS ENUM (
+CREATE TYPE github_target_type AS ENUM (
     'repository',
     'organization',
-    'user'
+    'integration',
+    'business',
+    'marketplace::listing',
+    'sponsorslisting'
 );
 
 CREATE TABLE github (
     "id" UUID DEFAULT uuid_generate_v4() NOT NULL PRIMARY KEY,
     "created_at" TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     "delivery_id" UUID NOT NULL,
-    "event" event_type NOT NULL,
-    "target" target_type NOT NULL,
-    "target_id" BIGSERIAL NOT NULL,
-    "hook_id" BIGSERIAL NOT NULL,
+    "event" github_event_type NOT NULL,
+    "target" github_target_type NOT NULL,
+    "target_id" BIGINT NOT NULL,
+    "hook_id" BIGINT NOT NULL,
     "user_login" VARCHAR(40) NOT NULL,
-    "user_id" BIGSERIAL NOT NULL,
-    "offset" BIGSERIAL NOT NULL,
+    "user_id" BIGINT NOT NULL,
+    "offset" BIGINT NOT NULL,
     "partition" SERIAL NOT NULL,
     "payload" JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
-CREATE INDEX idx_event ON github (event);
-CREATE INDEX idx_target ON github (target);
-CREATE INDEX idx_user_login ON github (user_login);
-CREATE INDEX idx_user_id ON github (user_id);
-CREATE INDEX idx_payload ON github USING gin (payload);
+CREATE INDEX idx_github_event ON github (event);
+CREATE INDEX idx_github_target ON github (target);
+CREATE INDEX idx_github_user_login ON github (user_login);
+CREATE INDEX idx_github_user_id ON github (user_id);
+CREATE INDEX idx_github_payload ON github USING gin (payload);
 
 COMMIT;
