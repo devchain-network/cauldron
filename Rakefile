@@ -24,9 +24,13 @@ task default: ['run:server']
 namespace :run do
   desc 'run server'
   task :server do
-    system %{ go run -race cmd/server/main.go }
+    run = %{ go run -race cmd/server/main.go }
+    pid = Process.spawn(run)
+    Process.wait(pid)
     $CHILD_STATUS&.exitstatus || 1
   rescue Interrupt
+    Process.getpgid(pid)
+    Process.kill('KILL', pid)
     0
   end
 
@@ -34,9 +38,13 @@ namespace :run do
     namespace :github do
       desc 'run kafka github consumer'
       task :consumer do
-        system %{ go run -race cmd/githubconsumer/main.go }
+        run = %{ go run -race cmd/githubconsumer/main.go }
+        pid = Process.spawn(run)
+        Process.wait(pid)
         $CHILD_STATUS&.exitstatus || 1
       rescue Interrupt
+        Process.getpgid(pid)
+        Process.kill('KILL', pid)
         0
       end
     end

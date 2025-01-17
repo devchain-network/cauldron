@@ -7,10 +7,9 @@ import (
 	"runtime"
 	"sync"
 	"syscall"
-	"time"
 
-	"github.com/IBM/sarama"
 	"github.com/devchain-network/cauldron/internal/kafkaconsumer"
+	"github.com/devchain-network/cauldron/internal/kafkaproducer"
 	"github.com/devchain-network/cauldron/internal/slogger"
 	"github.com/valyala/fasthttp"
 	"github.com/vigo/getenv"
@@ -42,32 +41,14 @@ func Run() error {
 	}
 
 	kafkaBrokers := kafkaconsumer.TCPAddrs(*brokersList).List()
-
-	kafkaConfig := sarama.NewConfig()
-	kafkaConfig.Producer.RequiredAcks = sarama.WaitForAll
-	kafkaConfig.Producer.Return.Successes = true
-	kafkaConfig.Producer.Return.Errors = true
-
-	var kafkaProducer sarama.AsyncProducer
-	var kafkaProducerErr error
-
-	for i := range *maxRetries {
-		kafkaProducer, kafkaProducerErr = sarama.NewAsyncProducer(kafkaBrokers, kafkaConfig)
-		if kafkaProducerErr == nil {
-			break
-		}
-
-		logger.Error(
-			"can not connect broker",
-			"error", kafkaProducerErr,
-			"retry", fmt.Sprintf("%d/%d", i, *maxRetries),
-			"backoff", backoff.String(),
-		)
-		time.Sleep(*backoff)
-		*backoff *= 2
-	}
-	if kafkaProducerErr != nil {
-		return fmt.Errorf("apiserver.Run sarama.NewAsyncProducer error: [%w]", err)
+	kafkaProducer, err := kafkaproducer.New(
+		kafkaproducer.WithLogger(logger),
+		kafkaproducer.WithKafkaBrokers(kafkaBrokers),
+		kafkaproducer.WithMaxRetries(*maxRetries),
+		kafkaproducer.WithBackoff(*backoff),
+	)
+	if err != nil {
+		return fmt.Errorf("apiserver.Run kafkaproducer.New error: [%w]", err)
 	}
 
 	defer func() { _ = kafkaProducer.Close() }()
@@ -135,7 +116,6 @@ func Run() error {
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 		<-sig
 
-		logger.Info("shutting down the server")
 		if errStop := server.Stop(); err != nil {
 			logger.Error("server stop error: [%w]", "error", errStop)
 		}

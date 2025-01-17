@@ -37,7 +37,7 @@ type Manager struct {
 	Logger     *slog.Logger
 	Pool       *pgxpool.Pool
 	DSN        string
-	BackOff    time.Duration
+	Backoff    time.Duration
 	MaxRetries uint8
 }
 
@@ -71,7 +71,7 @@ func (m Manager) GitHubStore(data *GitHubWebhookData) error {
 // connection can be established.
 func (m Manager) Ping() error {
 	var pingErr error
-	backOff := m.BackOff
+	backOff := m.Backoff
 	ctx := context.Background()
 
 	for i := range m.MaxRetries {
@@ -116,7 +116,7 @@ func WithBackoff(d time.Duration) Option {
 		if d == 0 {
 			return fmt.Errorf("storage.WithBackoff error: [%w]", cerrors.ErrValueRequired)
 		}
-		m.BackOff = d
+		m.Backoff = d
 
 		return nil
 	}
@@ -149,7 +149,7 @@ func WithLogger(l *slog.Logger) Option {
 // New instantiates new pgx connection pool.
 func New(options ...Option) (*Manager, error) {
 	manager := new(Manager)
-	manager.BackOff = DefaultDBPingBackoff
+	manager.Backoff = DefaultDBPingBackoff
 	manager.MaxRetries = DefaultDBPingMaxRetries
 
 	for _, option := range options {
