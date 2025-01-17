@@ -10,11 +10,8 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/devchain-network/cauldron/internal/apiserver/githubhandleroptions"
-	"github.com/devchain-network/cauldron/internal/apiserver/httphandleroptions"
 	"github.com/devchain-network/cauldron/internal/kafkaconsumer"
 	"github.com/devchain-network/cauldron/internal/slogger"
-	"github.com/go-playground/webhooks/v6/github"
 	"github.com/valyala/fasthttp"
 	"github.com/vigo/getenv"
 )
@@ -23,7 +20,7 @@ import (
 func Run() error {
 	listenAddr := getenv.TCPAddr("LISTEN_ADDR", serverDefaultListenAddr)
 	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
-	githubHMACSecret := getenv.String("GITHUB_HMAC_SECRET", "")
+	// githubHMACSecret := getenv.String("GITHUB_HMAC_SECRET", "")
 	brokersList := getenv.String("KCP_BROKERS", kafkaconsumer.DefaultKafkaBrokers)
 	producerMessageQueueSize := getenv.Int("KP_PRODUCER_QUEUE_SIZE", kpDefaultQueueSize)
 	backoff := getenv.Duration("KC_BACKOFF", kafkaconsumer.DefaultKafkaConsumerBackoff)
@@ -32,10 +29,10 @@ func Run() error {
 		return fmt.Errorf("apiserver.Run getenv.Parse error: [%w]", err)
 	}
 
-	githubWebhook, err := github.New(github.Options.Secret(*githubHMACSecret))
-	if err != nil {
-		return fmt.Errorf("apiserver.Run github.New error: [%w]", err)
-	}
+	// githubWebhook, err := github.New(github.Options.Secret(*githubHMACSecret))
+	// if err != nil {
+	// 	return fmt.Errorf("apiserver.Run github.New error: [%w]", err)
+	// }
 
 	logger, err := slogger.New(
 		slogger.WithLogLevelName(*logLevel),
@@ -77,25 +74,25 @@ func Run() error {
 
 	logger.Info("connected to kafka brokers", "addrs", kafkaBrokers)
 
-	producerMessageQueue := make(chan *sarama.ProducerMessage, *producerMessageQueueSize)
+	// producerMessageQueue := make(chan *sarama.ProducerMessage, *producerMessageQueueSize)
 
-	handlerOptions, err := httphandleroptions.New(
-		httphandleroptions.WithLogger(logger),
-		httphandleroptions.WithKafkaProducer(kafkaProducer),
-		httphandleroptions.WithProducerMessageQueue(producerMessageQueue),
-	)
-	if err != nil {
-		return fmt.Errorf("apiserver.Run httphandleroptions.New error: [%w]", err)
-	}
-
-	githubHandlerOptions, err := githubhandleroptions.New(
-		githubhandleroptions.WithWebhook(githubWebhook),
-		githubhandleroptions.WithCommonHandler(handlerOptions),
-		githubhandleroptions.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
-	)
-	if err != nil {
-		return fmt.Errorf("apiserver.Run githubhandleroptions.New error: [%w]", err)
-	}
+	// handlerOptions, err := httphandleroptions.New(
+	// 	httphandleroptions.WithLogger(logger),
+	// 	httphandleroptions.WithKafkaProducer(kafkaProducer),
+	// 	httphandleroptions.WithProducerMessageQueue(producerMessageQueue),
+	// )
+	// if err != nil {
+	// 	return fmt.Errorf("apiserver.Run httphandleroptions.New error: [%w]", err)
+	// }
+	//
+	// githubHandlerOptions, err := githubhandleroptions.New(
+	// 	githubhandleroptions.WithWebhook(githubWebhook),
+	// 	githubhandleroptions.WithCommonHandler(handlerOptions),
+	// 	githubhandleroptions.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
+	// )
+	// if err != nil {
+	// 	return fmt.Errorf("apiserver.Run githubhandleroptions.New error: [%w]", err)
+	// }
 
 	numMessageWorkers := runtime.NumCPU()
 	logger.Info(
@@ -110,7 +107,7 @@ func Run() error {
 		WithKafkaGitHubTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
 		WithKafkaBrokers(kafkaBrokers),
 		WithHTTPHandler(fasthttp.MethodGet, "/healthz", HealthCheckHandler),
-		WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/github", GitHubWebhookHandler(githubHandlerOptions)),
+		// WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/github", GitHubWebhookHandler(githubHandlerOptions)),
 	)
 	if err != nil {
 		return fmt.Errorf("apiserver.Run apiserver.New error: [%w]", err)
@@ -119,17 +116,17 @@ func Run() error {
 	ch := make(chan struct{})
 
 	var wg sync.WaitGroup
-	for i := range numMessageWorkers {
-		wg.Add(1)
-		go func() {
-			defer func() {
-				wg.Done()
-				logger.Info("terminating worker", "worker id", i)
-			}()
-
-			handlerOptions.MessageWorker(i)
-		}()
-	}
+	// for i := range numMessageWorkers {
+	// 	wg.Add(1)
+	// 	go func() {
+	// 		defer func() {
+	// 			wg.Done()
+	// 			logger.Info("terminating worker", "worker id", i)
+	// 		}()
+	//
+	// 		handlerOptions.MessageWorker(i)
+	// 	}()
+	// }
 
 	wg.Add(1)
 	go func() {
@@ -142,7 +139,7 @@ func Run() error {
 		if errStop := server.Stop(); err != nil {
 			logger.Error("server stop error: [%w]", "error", errStop)
 		}
-		handlerOptions.Shutdown()
+		// handlerOptions.Shutdown()
 		close(ch)
 	}()
 
