@@ -10,7 +10,7 @@ import (
 	"github.com/devchain-network/cauldron/internal/kafkaconsumer"
 )
 
-// Producer ...
+// Producer holds required arguments.
 type Producer struct {
 	Logger       *slog.Logger
 	KafkaBrokers []string
@@ -71,7 +71,7 @@ func WithBackoff(d time.Duration) Option {
 	}
 }
 
-// New ...
+// New instantiates new kafka producer.
 func New(options ...Option) (sarama.AsyncProducer, error) { //nolint:ireturn
 	producer := new(Producer)
 
