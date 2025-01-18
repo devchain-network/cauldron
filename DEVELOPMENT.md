@@ -53,7 +53,7 @@ bundle
 | `LOG_LEVEL` | Logging level, Valid values are: `"DEBUG"`, `"INFO"`, `"WARN"`, `"ERROR"` | `"INFO"` |
 | `GITHUB_HMAC_SECRET` | HMAC secret value for GitHub’s webhooks. | `""` |
 | `KCP_BROKERS` | Kafka consumer/producer brokers list, comma separated | `"127.0.0.1:9094"` |
-| `KP_PRODUCER_QUEUE_SIZE` | Size of default Kafka message producer queue size | `100` |
+| `KP_GITHUB_MESSAGE_QUEUE_SIZE` | Size of default Kafka message producer queue size for GitHub Webhooks | `100` |
 | `KC_PARTITION` | Consumer partition number | `0` |
 | `KC_TOPIC` | Topic to subscribe | `""` |
 | `KC_DIAL_TIMEOUT` | Initial connection timeout used by broker | "`30s`" (seconds) |
@@ -100,7 +100,7 @@ export GITHUB_HMAC_SECRET="<secret>"
 export KCP_BROKERS="127.0.0.1:9094"
 
 # kafka producer values.
-export KP_PRODUCER_QUEUE_SIZE=100
+export KP_GITHUB_MESSAGE_QUEUE_SIZE=100
 
 # kafka github consumer values.
 export KC_PARTITION="0"

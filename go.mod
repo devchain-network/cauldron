@@ -4,6 +4,7 @@ go 1.23.4
 
 require (
 	github.com/IBM/sarama v1.45.0
+	github.com/buger/jsonparser v1.1.1
 	github.com/go-playground/webhooks/v6 v6.4.0
 	github.com/golang-migrate/migrate/v4 v4.18.1
 	github.com/google/uuid v1.6.0
