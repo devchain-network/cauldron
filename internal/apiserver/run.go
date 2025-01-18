@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -22,7 +23,7 @@ import (
 func Run() error {
 	listenAddr := getenv.TCPAddr("LISTEN_ADDR", serverDefaultListenAddr)
 	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
-	// brokersList := getenv.String("KCP_BROKERS", kafkacp.DefaultKafkaBrokers)
+	brokersList := getenv.String("KCP_BROKERS", kafkacp.DefaultKafkaBrokers)
 	backoff := getenv.Duration("KC_BACKOFF", kafkacp.DefaultKafkaProducerBackoff)
 	maxRetries := getenv.Int("KC_MAX_RETRIES", kafkacp.DefaultKafkaProducerMaxRetries)
 	githubHMACSecret := getenv.String("GITHUB_HMAC_SECRET", "")
@@ -38,8 +39,15 @@ func Run() error {
 		return fmt.Errorf("apiserver.Run slogger.New error: [%w]", err)
 	}
 
-	kafkaBrokers := []string{":9094"}
-	// kafkaBrokers := kafkaconsumer.TCPAddrs(*brokersList).List()
+	var kafkaBrokers kafkacp.KafkaBrokers
+	brokerSlice := strings.Split(*brokersList, ",")
+	for _, addr := range brokerSlice {
+		brokerAddr := kafkacp.TCPAddr(addr)
+		if brokerAddr.Valid() {
+			kafkaBrokers = append(kafkaBrokers, brokerAddr)
+		}
+	}
+
 	kafkaProducer, err := kafkaproducer.New(
 		kafkaproducer.WithLogger(logger),
 		kafkaproducer.WithKafkaBrokers(kafkaBrokers),

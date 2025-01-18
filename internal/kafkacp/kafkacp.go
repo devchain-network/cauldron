@@ -2,7 +2,10 @@ package kafkacp
 
 import (
 	"slices"
+	"strings"
 	"time"
+
+	"github.com/vigo/getenv"
 )
 
 // defaults.
@@ -40,4 +43,57 @@ func (s KafkaTopicIdentifier) Valid() bool {
 	}
 
 	return slices.Contains(validKafkaTopicIdentifiers, s)
+}
+
+// TCPAddr represents tcp address as string.
+type TCPAddr string
+
+func (s TCPAddr) String() string {
+	return string(s)
+}
+
+// Valid checks and validates kafka topic name.
+func (s TCPAddr) Valid() bool {
+	if s == "" {
+		return false
+	}
+
+	if _, err := getenv.ValidateTCPNetworkAddress(s.String()); err != nil {
+		return false
+	}
+
+	return true
+}
+
+// KafkaBrokers represents list of kafka broker tcp addresses.
+type KafkaBrokers []TCPAddr
+
+func (k KafkaBrokers) String() string {
+	ss := make([]string, len(k))
+	for i, broker := range k {
+		ss[i] = broker.String()
+	}
+
+	return strings.Join(ss, ",")
+}
+
+// Valid checks if all TCPAddr elements in KafkaBrokers are valid.
+func (k KafkaBrokers) Valid() bool {
+	for _, broker := range k {
+		if !broker.Valid() {
+			return false
+		}
+	}
+
+	return true
+}
+
+// ToStringSlice converts KafkaBrokers to a slice of strings.
+func (k KafkaBrokers) ToStringSlice() []string {
+	result := make([]string, len(k))
+	for i, broker := range k {
+		result[i] = broker.String()
+	}
+
+	return result
 }

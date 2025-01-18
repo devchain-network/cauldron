@@ -47,7 +47,7 @@ type Server struct {
 	Handlers         map[string]MethodHandler
 	ListenAddr       string
 	KafkaGitHubTopic kafkacp.KafkaTopicIdentifier
-	KafkaBrokers     []string
+	KafkaBrokers     kafkacp.KafkaBrokers
 	ReadTimeout      time.Duration
 	WriteTimeout     time.Duration
 	IdleTimeout      time.Duration
@@ -168,14 +168,13 @@ func WithIdleTimeout(d time.Duration) Option {
 }
 
 // WithKafkaBrokers sets kafka brokers list.
-func WithKafkaBrokers(brokers []string) Option {
+func WithKafkaBrokers(brokers kafkacp.KafkaBrokers) Option {
 	return func(server *Server) error {
-		// if err := kafkaconsumer.IsBrokersAreValid(brokers); err != nil {
-		// 	return fmt.Errorf("apiserver.WithKafkaBrokers server.KafkaBrokers error: [%w]", err)
-		// }
+		if !brokers.Valid() {
+			return fmt.Errorf("apiserver.WithKafkaBrokers server.KafkaBrokers error: [%w]", cerrors.ErrInvalid)
+		}
 
-		server.KafkaBrokers = make([]string, len(brokers))
-		copy(server.KafkaBrokers, brokers)
+		server.KafkaBrokers = brokers
 
 		return nil
 	}
@@ -184,9 +183,9 @@ func WithKafkaBrokers(brokers []string) Option {
 // WithKafkaGitHubTopic sets kafka topic name for github webhooks.
 func WithKafkaGitHubTopic(s kafkacp.KafkaTopicIdentifier) Option {
 	return func(server *Server) error {
-		// if err := kafkaconsumer.IsKafkaTopicValid(s); err != nil {
-		// 	return fmt.Errorf("apiserver.WithKafkaGitHubTopic server.KafkaGitHubTopic error: [%w]", err)
-		// }
+		if !s.Valid() {
+			return fmt.Errorf("apiserver.WithKafkaGitHubTopic server.KafkaGitHubTopic error: [%w]", cerrors.ErrInvalid)
+		}
 		server.KafkaGitHubTopic = s
 
 		return nil

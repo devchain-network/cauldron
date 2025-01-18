@@ -167,10 +167,9 @@ func WithLogger(l *slog.Logger) Option {
 // WithTopic sets topic name to consume.
 func WithTopic(s kafkacp.KafkaTopicIdentifier) Option {
 	return func(h *Handler) error {
-		// if err := kafkaconsumer.IsKafkaTopicValid(s); err != nil {
-		// 	return fmt.Errorf("githubwebhookhandler.WithTopic h.Topic error: [%w]", err)
-		// }
-
+		if !s.Valid() {
+			return fmt.Errorf("githubwebhookhandler.WithTopic h.Topic error: [%w]", cerrors.ErrInvalid)
+		}
 		h.Topic = s
 
 		return nil

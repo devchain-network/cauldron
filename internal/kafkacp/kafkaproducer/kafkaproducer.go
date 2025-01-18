@@ -7,12 +7,13 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/devchain-network/cauldron/internal/cerrors"
+	"github.com/devchain-network/cauldron/internal/kafkacp"
 )
 
 // Producer holds required arguments.
 type Producer struct {
 	Logger       *slog.Logger
-	KafkaBrokers []string
+	KafkaBrokers kafkacp.KafkaBrokers
 	MaxRetries   uint8
 	Backoff      time.Duration
 }
@@ -33,14 +34,13 @@ func WithLogger(l *slog.Logger) Option {
 }
 
 // WithKafkaBrokers sets kafka brokers list.
-func WithKafkaBrokers(brokers []string) Option {
+func WithKafkaBrokers(brokers kafkacp.KafkaBrokers) Option {
 	return func(p *Producer) error {
-		// if err := kafkaconsumer.IsBrokersAreValid(brokers); err != nil {
-		// 	return fmt.Errorf("kafkaproducer.WithKafkaBrokers error: [%w]", err)
-		// }
+		if !brokers.Valid() {
+			return fmt.Errorf("kafkaproducer.WithKafkaBrokers error: [%w]", cerrors.ErrInvalid)
+		}
 
-		p.KafkaBrokers = make([]string, len(brokers))
-		copy(p.KafkaBrokers, brokers)
+		p.KafkaBrokers = brokers
 
 		return nil
 	}
@@ -90,7 +90,7 @@ func New(options ...Option) (sarama.AsyncProducer, error) { //nolint:ireturn
 	backoff := producer.Backoff
 
 	for i := range producer.MaxRetries {
-		kafkaProducer, kafkaProducerErr = sarama.NewAsyncProducer(producer.KafkaBrokers, kafkaConfig)
+		kafkaProducer, kafkaProducerErr = sarama.NewAsyncProducer(producer.KafkaBrokers.ToStringSlice(), kafkaConfig)
 		if kafkaProducerErr == nil {
 			break
 		}
