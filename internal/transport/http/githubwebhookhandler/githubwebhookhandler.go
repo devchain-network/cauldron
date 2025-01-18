@@ -12,7 +12,7 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/buger/jsonparser"
 	"github.com/devchain-network/cauldron/internal/cerrors"
-	"github.com/devchain-network/cauldron/internal/kafkaconsumer"
+	"github.com/devchain-network/cauldron/internal/kafkacp"
 	"github.com/devchain-network/cauldron/internal/transport/http/httphandler"
 	"github.com/valyala/fasthttp"
 )
@@ -28,7 +28,7 @@ type GitHubWebhookHandler interface {
 type Handler struct {
 	MessageQueue chan *sarama.ProducerMessage
 	Logger       *slog.Logger
-	Topic        kafkaconsumer.KafkaTopicIdentifier
+	Topic        kafkacp.KafkaTopicIdentifier
 	Secret       string
 }
 
@@ -49,28 +49,68 @@ func (h Handler) Handle(ctx *fasthttp.RequestCtx) {
 	expectedMAC := hex.EncodeToString(mac.Sum(nil))
 
 	if !hmac.Equal([]byte(hubSignature), []byte(expectedMAC)) {
-		h.Logger.Error("invalid hmac", "want", expectedMAC, "got", hubSignature)
+		h.Logger.Error("invalid github hmac/secret")
 		ctx.SetStatusCode(fasthttp.StatusBadRequest)
 
 		return
 	}
 
 	githubEvent := ctx.Request.Header.Peek("X-Github-Event")
+	if len(githubEvent) == 0 {
+		h.Logger.Error("missing http header", "header", "X-Github-Event")
+		ctx.SetStatusCode(fasthttp.StatusBadRequest)
+
+		return
+	}
+
 	githubDelivery := ctx.Request.Header.Peek("X-Github-Delivery")
+	if len(githubDelivery) == 0 {
+		h.Logger.Error("missing http header", "header", "X-Github-Delivery")
+		ctx.SetStatusCode(fasthttp.StatusBadRequest)
+
+		return
+	}
+
 	githubHookID := ctx.Request.Header.Peek("X-Github-Hook-Id")
+	if len(githubHookID) == 0 {
+		h.Logger.Error("missing http header", "header", "X-Github-Hook-Id")
+		ctx.SetStatusCode(fasthttp.StatusBadRequest)
+
+		return
+	}
+
 	githubHookInstallationTargetID := ctx.Request.Header.Peek("X-Github-Hook-Installation-Target-Id")
+	if len(githubHookInstallationTargetID) == 0 {
+		h.Logger.Error("missing http header", "header", "X-Github-Hook-Installation-Target-Id")
+		ctx.SetStatusCode(fasthttp.StatusBadRequest)
+
+		return
+	}
+
 	githubHookInstallationTargetType := ctx.Request.Header.Peek("X-Github-Hook-Installation-Target-Type")
+	if len(githubHookInstallationTargetType) == 0 {
+		h.Logger.Error("missing http header", "header", "X-Github-Hook-Installation-Target-Type")
+		ctx.SetStatusCode(fasthttp.StatusBadRequest)
+
+		return
+	}
 
 	senderLogin, err := jsonparser.GetString(ctx.PostBody(), "sender", "login")
 	if err != nil {
 		h.Logger.Error("senderLogin jsonparser.GetString error", "error", err)
+		ctx.SetStatusCode(fasthttp.StatusBadRequest)
+
+		return
 	}
 	senderID, err := jsonparser.GetInt(ctx.PostBody(), "sender", "id")
 	if err != nil {
 		h.Logger.Error("senderID jsonparser.GetInt error", "error", err)
+		ctx.SetStatusCode(fasthttp.StatusBadRequest)
+
+		return
 	}
 
-	fmt.Println("senderLogin", senderLogin, "senderID", senderID)
+	h.Logger.Info("recevied github webhook", "senderLogin", senderLogin, "senderID", senderID)
 
 	message := &sarama.ProducerMessage{
 		Topic: h.Topic.String(),
@@ -86,13 +126,26 @@ func (h Handler) Handle(ctx *fasthttp.RequestCtx) {
 		},
 	}
 
-	h.MessageQueue <- message
-	h.Logger.Info(
-		"kafka message queued for process",
-		"key", string(githubDelivery),
-		"topic", h.Topic,
-	)
+	go func() {
+		select {
+		case h.MessageQueue <- message:
+			h.Logger.Info(
+				"kafka message queued for processing",
+				"key", string(githubDelivery),
+				"topic", h.Topic,
+			)
+		case <-ctx.Done():
+			h.Logger.Info("received context Done")
+		default:
+			h.Logger.Error(
+				"kafka message queue full, dropping message",
+				"key", string(githubDelivery),
+				"topic", h.Topic,
+			)
+		}
+	}()
 
+	h.Logger.Info("github webhook received successfully")
 	ctx.SetStatusCode(fasthttp.StatusAccepted)
 }
 
@@ -112,11 +165,11 @@ func WithLogger(l *slog.Logger) Option {
 }
 
 // WithTopic sets topic name to consume.
-func WithTopic(s kafkaconsumer.KafkaTopicIdentifier) Option {
+func WithTopic(s kafkacp.KafkaTopicIdentifier) Option {
 	return func(h *Handler) error {
-		if err := kafkaconsumer.IsKafkaTopicValid(s); err != nil {
-			return fmt.Errorf("githubwebhookhandler.WithTopic h.Topic error: [%w]", err)
-		}
+		// if err := kafkaconsumer.IsKafkaTopicValid(s); err != nil {
+		// 	return fmt.Errorf("githubwebhookhandler.WithTopic h.Topic error: [%w]", err)
+		// }
 
 		h.Topic = s
 

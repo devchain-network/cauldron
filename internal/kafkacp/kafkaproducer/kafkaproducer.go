@@ -7,7 +7,6 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/devchain-network/cauldron/internal/cerrors"
-	"github.com/devchain-network/cauldron/internal/kafkaconsumer"
 )
 
 // Producer holds required arguments.
@@ -36,9 +35,9 @@ func WithLogger(l *slog.Logger) Option {
 // WithKafkaBrokers sets kafka brokers list.
 func WithKafkaBrokers(brokers []string) Option {
 	return func(p *Producer) error {
-		if err := kafkaconsumer.IsBrokersAreValid(brokers); err != nil {
-			return fmt.Errorf("kafkaproducer.WithKafkaBrokers error: [%w]", err)
-		}
+		// if err := kafkaconsumer.IsBrokersAreValid(brokers); err != nil {
+		// 	return fmt.Errorf("kafkaproducer.WithKafkaBrokers error: [%w]", err)
+		// }
 
 		p.KafkaBrokers = make([]string, len(brokers))
 		copy(p.KafkaBrokers, brokers)

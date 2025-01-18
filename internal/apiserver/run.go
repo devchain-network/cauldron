@@ -9,8 +9,8 @@ import (
 	"syscall"
 
 	"github.com/IBM/sarama"
-	"github.com/devchain-network/cauldron/internal/kafkaconsumer"
-	"github.com/devchain-network/cauldron/internal/kafkaproducer"
+	"github.com/devchain-network/cauldron/internal/kafkacp"
+	"github.com/devchain-network/cauldron/internal/kafkacp/kafkaproducer"
 	"github.com/devchain-network/cauldron/internal/slogger"
 	"github.com/devchain-network/cauldron/internal/transport/http/githubwebhookhandler"
 	"github.com/devchain-network/cauldron/internal/transport/http/healthcheckhandler"
@@ -22,9 +22,9 @@ import (
 func Run() error {
 	listenAddr := getenv.TCPAddr("LISTEN_ADDR", serverDefaultListenAddr)
 	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
-	brokersList := getenv.String("KCP_BROKERS", kafkaconsumer.DefaultKafkaBrokers)
-	backoff := getenv.Duration("KC_BACKOFF", kafkaconsumer.DefaultKafkaConsumerBackoff)
-	maxRetries := getenv.Int("KC_MAX_RETRIES", kafkaconsumer.DefaultKafkaConsumerMaxRetries)
+	// brokersList := getenv.String("KCP_BROKERS", kafkacp.DefaultKafkaBrokers)
+	backoff := getenv.Duration("KC_BACKOFF", kafkacp.DefaultKafkaProducerBackoff)
+	maxRetries := getenv.Int("KC_MAX_RETRIES", kafkacp.DefaultKafkaProducerMaxRetries)
 	githubHMACSecret := getenv.String("GITHUB_HMAC_SECRET", "")
 	githubWebhookMessageQueueSize := getenv.Int("KP_GITHUB_MESSAGE_QUEUE_SIZE", kpDefaultQueueSize)
 	if err := getenv.Parse(); err != nil {
@@ -38,7 +38,8 @@ func Run() error {
 		return fmt.Errorf("apiserver.Run slogger.New error: [%w]", err)
 	}
 
-	kafkaBrokers := kafkaconsumer.TCPAddrs(*brokersList).List()
+	kafkaBrokers := []string{":9094"}
+	// kafkaBrokers := kafkaconsumer.TCPAddrs(*brokersList).List()
 	kafkaProducer, err := kafkaproducer.New(
 		kafkaproducer.WithLogger(logger),
 		kafkaproducer.WithKafkaBrokers(kafkaBrokers),
@@ -71,7 +72,7 @@ func Run() error {
 
 	githubWebhookHandler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub),
 		githubwebhookhandler.WithWebhookSecret(*githubHMACSecret),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(githubWebhookMessageQueue),
 	)
@@ -82,7 +83,7 @@ func Run() error {
 	server, err := New(
 		WithLogger(logger),
 		WithListenAddr(*listenAddr),
-		WithKafkaGitHubTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
+		WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub),
 		WithKafkaBrokers(kafkaBrokers),
 		WithHTTPHandler(fasthttp.MethodGet, "/healthz", healthCheckHandler.Handle),
 		WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/github", githubWebhookHandler.Handle),
