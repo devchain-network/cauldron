@@ -17,6 +17,23 @@ var (
 	_ GitHubPingStorer = (*GitHubStorage)(nil) // compile time proof
 )
 
+// queries.
+const (
+	GitHubStoreQuery = `
+	INSERT INTO github (
+		delivery_id, 
+		event, 
+		target, 
+		target_id, 
+		hook_id, 
+		user_login, 
+		user_id, 
+		"offset", 
+		partition, 
+		payload
+	) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+)
+
 // GitHub represents `github` table model fields.
 type GitHub struct {
 	Payload    any
@@ -31,24 +48,22 @@ type GitHub struct {
 	Partition  int32
 }
 
-// GitHubPingStorer ...
+// GitHubPingStorer defines github storage behaviours.
 type GitHubPingStorer interface {
 	storage.Pinger
-	Store(payload *GitHub) error
+	Store(ctx context.Context, payload *GitHub) error
 }
 
-// GitHubStorage ...
+// GitHubStorage implements GitHubPingStorer interface.
 type GitHubStorage struct {
-	Logger *slog.Logger
-	Pool   *pgxpool.Pool
+	Logger      *slog.Logger
+	Pool        storage.PGPooler
+	DatabaseDSN string
 }
 
-// Ping ...
-func (s GitHubStorage) Ping(maxRetries uint8, backoff time.Duration) error {
+// Ping pings database and makes sure db communication is ok.
+func (s GitHubStorage) Ping(ctx context.Context, maxRetries uint8, backoff time.Duration) error {
 	var pingErr error
-
-	ctx, cancel := context.WithTimeout(context.Background(), storage.DefaultDBPingTimeout)
-	defer cancel()
 
 	for i := range maxRetries {
 		pingErr = s.Pool.Ping(ctx)
@@ -75,11 +90,37 @@ func (s GitHubStorage) Ping(maxRetries uint8, backoff time.Duration) error {
 	return nil
 }
 
-// Store ...
-func (s GitHubStorage) Store(payload *GitHub) error {
-	fmt.Println(payload)
-	fmt.Println(gitHubStoreQuery)
-	fmt.Println(s.Logger)
+// Store stores given github webhook data with extras to database.
+func (s GitHubStorage) Store(ctx context.Context, payload *GitHub) error {
+	_, err := s.Pool.Exec(
+		ctx,
+		GitHubStoreQuery,
+		payload.DeliveryID,
+		payload.Event,
+		payload.Target,
+		payload.TargetID,
+		payload.HookID,
+		payload.UserLogin,
+		payload.UserID,
+		payload.Offset,
+		payload.Partition,
+		payload.Payload,
+	)
+	if err != nil {
+		return fmt.Errorf("githubstorage.GitHubStorage.Store error: [%w]", err)
+	}
+
+	return nil
+}
+
+func (s GitHubStorage) checkRequired() error {
+	if s.Logger == nil {
+		return fmt.Errorf("githubstorage.New Logger error: [%w]", cerrors.ErrValueRequired)
+	}
+
+	if s.DatabaseDSN == "" {
+		return fmt.Errorf("githubstorage.New DatabaseDSN error: [%w]", cerrors.ErrValueRequired)
+	}
 
 	return nil
 }
@@ -99,16 +140,43 @@ func WithLogger(l *slog.Logger) Option {
 	}
 }
 
-const gitHubStoreQuery = `
-INSERT INTO github (
-	delivery_id, 
-	event, 
-	target, 
-	target_id, 
-	hook_id, 
-	user_login, 
-	user_id, 
-	"offset", 
-	partition, 
-	payload
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+// WithDatabaseDSN sets database data source.
+func WithDatabaseDSN(dsn string) Option {
+	return func(s *GitHubStorage) error {
+		if dsn == "" {
+			return fmt.Errorf("githubstorage.WithDatabaseDSN error: [%w]", cerrors.ErrValueRequired)
+		}
+		s.DatabaseDSN = dsn
+
+		return nil
+	}
+}
+
+// New instantiates new github storage.
+func New(ctx context.Context, options ...Option) (*GitHubStorage, error) {
+	githubStorage := new(GitHubStorage)
+
+	for _, option := range options {
+		if err := option(githubStorage); err != nil {
+			return nil, fmt.Errorf("githubstorage.New option error: [%w]", err)
+		}
+	}
+
+	if err := githubStorage.checkRequired(); err != nil {
+		return nil, err
+	}
+
+	config, err := pgxpool.ParseConfig(githubStorage.DatabaseDSN)
+	if err != nil {
+		return nil, fmt.Errorf("githubstorage.New pgxpool.ParseConfig error: [%w]", err)
+	}
+
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		return nil, fmt.Errorf("githubstorage.New pgxpool.NewWithConfig error: [%w]", err)
+	}
+
+	githubStorage.Pool = pool
+
+	return githubStorage, nil
+}

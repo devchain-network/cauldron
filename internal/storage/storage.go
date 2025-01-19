@@ -1,7 +1,10 @@
 package storage
 
 import (
+	"context"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // constants.
@@ -21,9 +24,15 @@ var validGitProviders = []GitProvider{
 	GitProviderBitbucket,
 }
 
-// Pinger ...
+// PGPooler ...
+type PGPooler interface {
+	Ping(ctx context.Context) error
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+}
+
+// Pinger defines ping behaviour.
 type Pinger interface {
-	Ping(maxRetries uint8, backoff time.Duration) error
+	Ping(ctx context.Context, maxRetries uint8, backoff time.Duration) error
 }
 
 // GitProvider represents git platform.
