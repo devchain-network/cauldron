@@ -9,6 +9,5 @@ DROP INDEX IF EXISTS idx_github_event;
 DROP TABLE IF EXISTS github;
 
 DROP TYPE IF EXISTS github_target_type;
-DROP TYPE IF EXISTS github_event_type;
 
 COMMIT;

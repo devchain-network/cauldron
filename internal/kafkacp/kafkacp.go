@@ -15,8 +15,12 @@ const (
 	DefaultKafkaProducerBackoff    = 2 * time.Second
 	DefaultKafkaProducerMaxRetries = 10
 
-	DefaultKafkaConsumerBackoff    = 2 * time.Second
-	DefaultKafkaConsumerMaxRetries = 10
+	DefaultKafkaConsumerPartition    = 0
+	DefaultKafkaConsumerDialTimeout  = 30 * time.Second
+	DefaultKafkaConsumerReadTimeout  = 30 * time.Second
+	DefaultKafkaConsumerWriteTimeout = 30 * time.Second
+	DefaultKafkaConsumerBackoff      = 2 * time.Second
+	DefaultKafkaConsumerMaxRetries   = 10
 
 	KafkaTopicIdentifierGitHub    KafkaTopicIdentifier = "github"
 	KafkaTopicIdentifierGitLab    KafkaTopicIdentifier = "gitlab"
