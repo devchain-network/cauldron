@@ -18,6 +18,17 @@ type Producer struct {
 	Backoff      time.Duration
 }
 
+func (p Producer) checkRequired() error {
+	if p.Logger == nil {
+		return fmt.Errorf("kafkaproducer.New Logger error: [%w]", cerrors.ErrValueRequired)
+	}
+	if !p.KafkaBrokers.Valid() {
+		return fmt.Errorf("kafkaproducer.New KafkaBrokers error: [%w]", cerrors.ErrInvalid)
+	}
+
+	return nil
+}
+
 // Option represents option function type.
 type Option func(*Producer) error
 
@@ -73,11 +84,17 @@ func WithBackoff(d time.Duration) Option {
 // New instantiates new kafka producer.
 func New(options ...Option) (sarama.AsyncProducer, error) { //nolint:ireturn
 	producer := new(Producer)
+	producer.MaxRetries = kafkacp.DefaultKafkaProducerMaxRetries
+	producer.Backoff = kafkacp.DefaultKafkaProducerBackoff
 
 	for _, option := range options {
 		if err := option(producer); err != nil {
 			return nil, fmt.Errorf("kafkaproducer.New option error: [%w]", err)
 		}
+	}
+
+	if err := producer.checkRequired(); err != nil {
+		return nil, err
 	}
 
 	kafkaConfig := sarama.NewConfig()

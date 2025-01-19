@@ -149,6 +149,23 @@ func (h Handler) Handle(ctx *fasthttp.RequestCtx) {
 	ctx.SetStatusCode(fasthttp.StatusAccepted)
 }
 
+func (h Handler) checkRequired() error {
+	if h.Logger == nil {
+		return fmt.Errorf("githubwebhookhandler.New Logger error: [%w]", cerrors.ErrValueRequired)
+	}
+	if !h.Topic.Valid() {
+		return fmt.Errorf("githubwebhookhandler.New Topic error: [%w]", cerrors.ErrInvalid)
+	}
+	if h.Secret == "" {
+		return fmt.Errorf("githubwebhookhandler.New Secret error: [%w]", cerrors.ErrValueRequired)
+	}
+	if h.MessageQueue == nil {
+		return fmt.Errorf("githubwebhookhandler.New MessageQueue error: [%w]", cerrors.ErrValueRequired)
+	}
+
+	return nil
+}
+
 // Option represents option function type.
 type Option func(*Handler) error
 
@@ -212,6 +229,10 @@ func New(options ...Option) (*Handler, error) {
 		if err := option(handler); err != nil {
 			return nil, fmt.Errorf("githubwebhookhandler.New option error: [%w]", err)
 		}
+	}
+
+	if err := handler.checkRequired(); err != nil {
+		return nil, err
 	}
 
 	return handler, nil

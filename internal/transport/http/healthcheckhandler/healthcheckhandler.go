@@ -26,6 +26,14 @@ func (h Handler) Handle(ctx *fasthttp.RequestCtx) {
 	ctx.SetBodyString("OK " + h.Version)
 }
 
+func (h Handler) checkRequired() error {
+	if h.Version == "" {
+		return fmt.Errorf("healthcheckhandler.New Version error: [%w]", cerrors.ErrValueRequired)
+	}
+
+	return nil
+}
+
 // Option represents option function type.
 type Option func(*Handler) error
 
@@ -49,6 +57,10 @@ func New(options ...Option) (*Handler, error) {
 		if err := option(handler); err != nil {
 			return nil, fmt.Errorf("healthcheckhandler.New option error: [%w]", err)
 		}
+	}
+
+	if err := handler.checkRequired(); err != nil {
+		return nil, err
 	}
 
 	return handler, nil

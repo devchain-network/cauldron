@@ -75,6 +75,31 @@ func (s *Server) Stop() error {
 	return nil
 }
 
+func (s Server) checkRequired() error {
+	if s.Logger == nil {
+		return fmt.Errorf("apiserver.New Logger error: [%w]", cerrors.ErrValueRequired)
+	}
+	if s.Handlers == nil {
+		return fmt.Errorf("apiserver.New Handlers error: [%w]", cerrors.ErrValueRequired)
+	}
+	if s.KafkaBrokers == nil {
+		return fmt.Errorf("apiserver.New KafkaBrokers error: [%w]", cerrors.ErrValueRequired)
+	}
+	if s.ListenAddr == "" {
+		return fmt.Errorf("apiserver.New ListenAddr error: [%w]", cerrors.ErrValueRequired)
+	}
+	if _, err := getenv.ValidateTCPNetworkAddress(s.ListenAddr); err != nil {
+		return fmt.Errorf(
+			"apiserver.New ListenAddr error: [%w] [%w]", err, cerrors.ErrInvalid,
+		)
+	}
+	if !s.KafkaGitHubTopic.Valid() {
+		return fmt.Errorf("apiserver.New KafkaGitHubTopic error: [%w]", cerrors.ErrInvalid)
+	}
+
+	return nil
+}
+
 // WithLogger sets logger.
 func WithLogger(l *slog.Logger) Option {
 	return func(server *Server) error {
@@ -206,16 +231,8 @@ func New(options ...Option) (*Server, error) {
 		}
 	}
 
-	if server.Logger == nil {
-		return nil, fmt.Errorf("apiserver.New server.Logger error: [%w]", cerrors.ErrValueRequired)
-	}
-
-	if server.Handlers == nil {
-		return nil, fmt.Errorf("apiserver.New server.Handlers error: [%w]", cerrors.ErrValueRequired)
-	}
-
-	if server.KafkaBrokers == nil {
-		return nil, fmt.Errorf("apiserver.New server.KafkaBrokers error: [%w]", cerrors.ErrValueRequired)
+	if err := server.checkRequired(); err != nil {
+		return nil, err
 	}
 
 	httpRouter := func(ctx *fasthttp.RequestCtx) {
