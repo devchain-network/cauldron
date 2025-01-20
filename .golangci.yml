@@ -10,6 +10,7 @@ linters-settings:
       - empty
       - stdlib
       - sarama.Consumer
+      - sarama.AsyncProducer
   # ---------------------------------------------------------------------------
   nestif:
     min-complexity: 6

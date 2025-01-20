@@ -37,7 +37,7 @@ func runMigration(logger *slog.Logger, dsn string) error {
 }
 
 func main() {
-	databaseURL := getenv.String("DATABASE_URL", "")
+	databaseURL := getenv.String("DATABASE_URL_MIGRATION", "")
 	if err := getenv.Parse(); err != nil {
 		log.Fatal(err)
 	}

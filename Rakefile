@@ -159,6 +159,7 @@ end
 
 DATABASE_NAME = ENV['DATABASE_NAME'] || nil
 DATABASE_URL = ENV['DATABASE_URL'] || nil
+DATABASE_URL_MIGRATION = ENV['DATABASE_URL_MIGRATION'] || nil
 
 task :pg_running do
   Rake::Task['command_exists'].invoke('pg_isready')
@@ -183,6 +184,7 @@ namespace :db do
 
   desc 'init database'
   task init: %i[pg_running confirm] do
+    abort 'DATABASE_NAME is not set' if DATABASE_NAME.nil?
     unless `psql -Xqtl | cut -d \\| -f1 | grep -qw #{DATABASE_NAME} > /dev/null 2>&1 && echo $?`.chomp.empty?
       abort "#{DATABASE_NAME} is already exists"
     end
@@ -194,7 +196,8 @@ namespace :db do
 
   desc 'run migrate up'
   task migrate: [:has_go_migrate] do
-    system %{ migrate -database "#{DATABASE_URL}" -path "migrations" up }
+    abort 'DATABASE_URL_MIGRATION is not set' if DATABASE_URL_MIGRATION.nil?
+    system %{ migrate -database "#{DATABASE_URL_MIGRATION}" -path "migrations" up }
     $CHILD_STATUS&.exitstatus || 1
   rescue Interrupt
     0

@@ -82,7 +82,7 @@ func WithBackoff(d time.Duration) Option {
 }
 
 // New instantiates new kafka producer.
-func New(options ...Option) (sarama.AsyncProducer, error) { //nolint:ireturn
+func New(options ...Option) (sarama.AsyncProducer, error) {
 	producer := new(Producer)
 	producer.MaxRetries = kafkacp.DefaultKafkaProducerMaxRetries
 	producer.Backoff = kafkacp.DefaultKafkaProducerBackoff
