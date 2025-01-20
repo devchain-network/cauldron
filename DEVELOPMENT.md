@@ -53,7 +53,7 @@ bundle
 | `LOG_LEVEL` | Logging level, Valid values are: `"DEBUG"`, `"INFO"`, `"WARN"`, `"ERROR"` | `"INFO"` |
 | `GITHUB_HMAC_SECRET` | HMAC secret value for GitHub’s webhooks. | `""` |
 | `KCP_BROKERS` | Kafka consumer/producer brokers list, comma separated | `"127.0.0.1:9094"` |
-| `KP_PRODUCER_QUEUE_SIZE` | Size of default Kafka message producer queue size | `100` |
+| `KP_GITHUB_MESSAGE_QUEUE_SIZE` | Size of default Kafka message producer queue size for GitHub Webhooks | `100` |
 | `KC_PARTITION` | Consumer partition number | `0` |
 | `KC_TOPIC` | Topic to subscribe | `""` |
 | `KC_DIAL_TIMEOUT` | Initial connection timeout used by broker | "`30s`" (seconds) |
@@ -100,7 +100,7 @@ export GITHUB_HMAC_SECRET="<secret>"
 export KCP_BROKERS="127.0.0.1:9094"
 
 # kafka producer values.
-export KP_PRODUCER_QUEUE_SIZE=100
+export KP_GITHUB_MESSAGE_QUEUE_SIZE=100
 
 # kafka github consumer values.
 export KC_PARTITION="0"
@@ -157,9 +157,11 @@ of `rake tasks`:
 ```bash
 rake -T
 
-rake coverage                      # run tests and show coverage
 rake db:init                       # init database
-rake db:migrate                    # run migrate up
+rake db:migrate                    # runs rake db:migrate up (shortcut)
+rake db:migrate:down               # run migrate down
+rake db:migrate:goto[index]        # go to migration
+rake db:migrate:up                 # run migrate up
 rake db:reset                      # reset database (drop and create)
 rake default                       # default task, runs server
 rake docker:build:github_consumer  # build github consumer
@@ -177,14 +179,17 @@ rake rubocop:autofix               # lint ruby and autofix
 rake rubocop:lint                  # lint ruby
 rake run:kafka:github:consumer     # run kafka github consumer
 rake run:server                    # run server
-rake test                          # run tests
+rake test                          # runs tests (shortcut)
+rake test:coverage                 # run tests and show coverage
 ```
 
 You can run tests:
 
 ```bash
-rake test      # or,
-rake coverage  # run tests and display code coverage in browser
+rake -T "test"
+
+rake test           # runs tests (shortcut)
+rake test:coverage  # run tests and show coverage
 ```
 
 Display all the `db` related tasks:
@@ -192,9 +197,12 @@ Display all the `db` related tasks:
 ```bash
 rake -T "db:"
 
-rake db:init     # init database
-rake db:migrate  # run migrate up
-rake db:reset    # reset database (drop and create)
+rake db:init                 # init database
+rake db:migrate              # runs rake db:migrate up (shortcut)
+rake db:migrate:down         # run migrate down
+rake db:migrate:goto[index]  # go to migration
+rake db:migrate:up           # run migrate up
+rake db:reset                # reset database (drop and create)
 ```
 
 If you have `postgresql` locally installed, run the following `rake` tasks to
@@ -207,6 +215,13 @@ rake db:migrate   # run migrations
 
 `rake db:reset` task is only used for starting from scratch. Drops and created
 db for you.
+
+`rake db:migrate:down` applies all the migrations through down, kind of returning
+back to initial. If you want to go to specific state, use:
+
+```bash
+rake db:migrate:goto[3]    # go back to `000003_github.up.sql`
+```
 
 You can run each service/component separately with opening multiple terminal
 tabs.

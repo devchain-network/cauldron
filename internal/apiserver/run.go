@@ -7,14 +7,13 @@ import (
 	"runtime"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/devchain-network/cauldron/internal/apiserver/githubhandleroptions"
-	"github.com/devchain-network/cauldron/internal/apiserver/httphandleroptions"
-	"github.com/devchain-network/cauldron/internal/kafkaconsumer"
+	"github.com/devchain-network/cauldron/internal/kafkacp"
+	"github.com/devchain-network/cauldron/internal/kafkacp/kafkaproducer"
 	"github.com/devchain-network/cauldron/internal/slogger"
-	"github.com/go-playground/webhooks/v6/github"
+	"github.com/devchain-network/cauldron/internal/transport/http/githubwebhookhandler"
+	"github.com/devchain-network/cauldron/internal/transport/http/healthcheckhandler"
 	"github.com/valyala/fasthttp"
 	"github.com/vigo/getenv"
 )
@@ -23,18 +22,13 @@ import (
 func Run() error {
 	listenAddr := getenv.TCPAddr("LISTEN_ADDR", serverDefaultListenAddr)
 	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
+	brokersList := getenv.String("KCP_BROKERS", kafkacp.DefaultKafkaBrokers)
+	backoff := getenv.Duration("KC_BACKOFF", kafkacp.DefaultKafkaProducerBackoff)
+	maxRetries := getenv.Int("KC_MAX_RETRIES", kafkacp.DefaultKafkaProducerMaxRetries)
 	githubHMACSecret := getenv.String("GITHUB_HMAC_SECRET", "")
-	brokersList := getenv.String("KCP_BROKERS", kafkaconsumer.DefaultKafkaBrokers)
-	producerMessageQueueSize := getenv.Int("KP_PRODUCER_QUEUE_SIZE", kpDefaultQueueSize)
-	backoff := getenv.Duration("KC_BACKOFF", kafkaconsumer.DefaultKafkaConsumerBackoff)
-	maxRetries := getenv.Int("KC_MAX_RETRIES", kafkaconsumer.DefaultKafkaConsumerMaxRetries)
+	githubWebhookMessageQueueSize := getenv.Int("KP_GITHUB_MESSAGE_QUEUE_SIZE", kpDefaultQueueSize)
 	if err := getenv.Parse(); err != nil {
 		return fmt.Errorf("apiserver.Run getenv.Parse error: [%w]", err)
-	}
-
-	githubWebhook, err := github.New(github.Options.Secret(*githubHMACSecret))
-	if err != nil {
-		return fmt.Errorf("apiserver.Run github.New error: [%w]", err)
 	}
 
 	logger, err := slogger.New(
@@ -44,81 +38,65 @@ func Run() error {
 		return fmt.Errorf("apiserver.Run slogger.New error: [%w]", err)
 	}
 
-	kafkaBrokers := kafkaconsumer.TCPAddrs(*brokersList).List()
+	var kafkaBrokers kafkacp.KafkaBrokers
+	kafkaBrokers.AddFromString(*brokersList)
 
-	kafkaConfig := sarama.NewConfig()
-	kafkaConfig.Producer.RequiredAcks = sarama.WaitForAll
-	kafkaConfig.Producer.Return.Successes = true
-	kafkaConfig.Producer.Return.Errors = true
-
-	var kafkaProducer sarama.AsyncProducer
-	var kafkaProducerErr error
-
-	for i := range *maxRetries {
-		kafkaProducer, kafkaProducerErr = sarama.NewAsyncProducer(kafkaBrokers, kafkaConfig)
-		if kafkaProducerErr == nil {
-			break
-		}
-
-		logger.Error(
-			"can not connect broker",
-			"error", kafkaProducerErr,
-			"retry", fmt.Sprintf("%d/%d", i, *maxRetries),
-			"backoff", backoff.String(),
-		)
-		time.Sleep(*backoff)
-		*backoff *= 2
-	}
-	if kafkaProducerErr != nil {
-		return fmt.Errorf("apiserver.Run sarama.NewAsyncProducer error: [%w]", err)
+	kafkaProducer, err := kafkaproducer.New(
+		kafkaproducer.WithLogger(logger),
+		kafkaproducer.WithKafkaBrokers(kafkaBrokers),
+		kafkaproducer.WithMaxRetries(*maxRetries),
+		kafkaproducer.WithBackoff(*backoff),
+	)
+	if err != nil {
+		return fmt.Errorf("apiserver.Run kafkaproducer.New error: [%w]", err)
 	}
 
-	defer func() { _ = kafkaProducer.Close() }()
+	defer kafkaProducer.AsyncClose()
 
 	logger.Info("connected to kafka brokers", "addrs", kafkaBrokers)
 
-	producerMessageQueue := make(chan *sarama.ProducerMessage, *producerMessageQueueSize)
-
-	handlerOptions, err := httphandleroptions.New(
-		httphandleroptions.WithLogger(logger),
-		httphandleroptions.WithKafkaProducer(kafkaProducer),
-		httphandleroptions.WithProducerMessageQueue(producerMessageQueue),
-	)
-	if err != nil {
-		return fmt.Errorf("apiserver.Run httphandleroptions.New error: [%w]", err)
-	}
-
-	githubHandlerOptions, err := githubhandleroptions.New(
-		githubhandleroptions.WithWebhook(githubWebhook),
-		githubhandleroptions.WithCommonHandler(handlerOptions),
-		githubhandleroptions.WithTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
-	)
-	if err != nil {
-		return fmt.Errorf("apiserver.Run githubhandleroptions.New error: [%w]", err)
-	}
+	githubWebhookMessageQueue := make(chan *sarama.ProducerMessage, *githubWebhookMessageQueueSize)
 
 	numMessageWorkers := runtime.NumCPU()
 	logger.Info(
 		"number of message workers",
 		"count", numMessageWorkers,
-		"producer queue size", *producerMessageQueueSize,
+		"github webhook message queue size", *githubWebhookMessageQueueSize,
 	)
+
+	healthCheckHandler, err := healthcheckhandler.New(
+		healthcheckhandler.WithVersion(serverVersion),
+	)
+	if err != nil {
+		return fmt.Errorf("apiserver.Run healthcheckhandler.New error: [%w]", err)
+	}
+
+	githubWebhookHandler, err := githubwebhookhandler.New(
+		githubwebhookhandler.WithLogger(logger),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub),
+		githubwebhookhandler.WithWebhookSecret(*githubHMACSecret),
+		githubwebhookhandler.WithProducerGitHubMessageQueue(githubWebhookMessageQueue),
+	)
+	if err != nil {
+		return fmt.Errorf("apiserver.Run githubwebhookhandler.New error: [%w]", err)
+	}
 
 	server, err := New(
 		WithLogger(logger),
 		WithListenAddr(*listenAddr),
-		WithKafkaGitHubTopic(kafkaconsumer.KafkaTopicIdentifierGitHub),
+		WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub),
 		WithKafkaBrokers(kafkaBrokers),
-		WithHTTPHandler(fasthttp.MethodGet, "/healthz", HealthCheckHandler),
-		WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/github", GitHubWebhookHandler(githubHandlerOptions)),
+		WithHTTPHandler(fasthttp.MethodGet, "/healthz", healthCheckHandler.Handle),
+		WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/github", githubWebhookHandler.Handle),
 	)
 	if err != nil {
 		return fmt.Errorf("apiserver.Run apiserver.New error: [%w]", err)
 	}
 
-	ch := make(chan struct{})
+	doneChannel := make(chan struct{})
 
 	var wg sync.WaitGroup
+
 	for i := range numMessageWorkers {
 		wg.Add(1)
 		go func() {
@@ -127,7 +105,24 @@ func Run() error {
 				logger.Info("terminating worker", "worker id", i)
 			}()
 
-			handlerOptions.MessageWorker(i)
+			func() {
+				for msg := range githubWebhookMessageQueue {
+					kafkaProducer.Input() <- msg
+
+					select {
+					case success := <-kafkaProducer.Successes():
+						logger.Info(
+							"message sent",
+							"worker", i,
+							"topic", success.Topic,
+							"partition", success.Partition,
+							"offset", success.Offset,
+						)
+					case err := <-kafkaProducer.Errors():
+						logger.Error("message send error", "error", err)
+					}
+				}
+			}()
 		}()
 	}
 
@@ -138,19 +133,18 @@ func Run() error {
 		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 		<-sig
 
-		logger.Info("shutting down the server")
 		if errStop := server.Stop(); err != nil {
 			logger.Error("server stop error: [%w]", "error", errStop)
 		}
-		handlerOptions.Shutdown()
-		close(ch)
+		close(githubWebhookMessageQueue)
+		close(doneChannel)
 	}()
 
 	if errStop := server.Start(); err != nil {
 		return fmt.Errorf("apiserver.Run server.Start error: [%w]", errStop)
 	}
 
-	<-ch
+	<-doneChannel
 	wg.Wait()
 	logger.Info("exiting apiserver, all clear")
 

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/devchain-network/cauldron/internal/cerrors"
-	"github.com/devchain-network/cauldron/internal/kafkaconsumer"
+	"github.com/devchain-network/cauldron/internal/kafkacp"
 	"github.com/valyala/fasthttp"
 	"github.com/vigo/getenv"
 )
@@ -46,8 +46,8 @@ type Server struct {
 	FastHTTP         *fasthttp.Server
 	Handlers         map[string]MethodHandler
 	ListenAddr       string
-	KafkaGitHubTopic kafkaconsumer.KafkaTopicIdentifier
-	KafkaBrokers     []string
+	KafkaGitHubTopic kafkacp.KafkaTopicIdentifier
+	KafkaBrokers     kafkacp.KafkaBrokers
 	ReadTimeout      time.Duration
 	WriteTimeout     time.Duration
 	IdleTimeout      time.Duration
@@ -70,6 +70,31 @@ func (s *Server) Stop() error {
 		s.Logger.Error("server shutdown error", "error", err)
 
 		return fmt.Errorf("apiserver.Stop FastHTTP.ShutdownWithContext error: [%w]", err)
+	}
+
+	return nil
+}
+
+func (s Server) checkRequired() error {
+	if s.Logger == nil {
+		return fmt.Errorf("apiserver.New Logger error: [%w]", cerrors.ErrValueRequired)
+	}
+	if s.Handlers == nil {
+		return fmt.Errorf("apiserver.New Handlers error: [%w]", cerrors.ErrValueRequired)
+	}
+	if s.KafkaBrokers == nil {
+		return fmt.Errorf("apiserver.New KafkaBrokers error: [%w]", cerrors.ErrValueRequired)
+	}
+	if s.ListenAddr == "" {
+		return fmt.Errorf("apiserver.New ListenAddr error: [%w]", cerrors.ErrValueRequired)
+	}
+	if _, err := getenv.ValidateTCPNetworkAddress(s.ListenAddr); err != nil {
+		return fmt.Errorf(
+			"apiserver.New ListenAddr error: [%w] [%w]", err, cerrors.ErrInvalid,
+		)
+	}
+	if !s.KafkaGitHubTopic.Valid() {
+		return fmt.Errorf("apiserver.New KafkaGitHubTopic error: [%w]", cerrors.ErrInvalid)
 	}
 
 	return nil
@@ -168,24 +193,23 @@ func WithIdleTimeout(d time.Duration) Option {
 }
 
 // WithKafkaBrokers sets kafka brokers list.
-func WithKafkaBrokers(brokers []string) Option {
+func WithKafkaBrokers(brokers kafkacp.KafkaBrokers) Option {
 	return func(server *Server) error {
-		if err := kafkaconsumer.IsBrokersAreValid(brokers); err != nil {
-			return fmt.Errorf("apiserver.WithKafkaBrokers server.KafkaBrokers error: [%w]", err)
+		if !brokers.Valid() {
+			return fmt.Errorf("apiserver.WithKafkaBrokers server.KafkaBrokers error: [%w]", cerrors.ErrInvalid)
 		}
 
-		server.KafkaBrokers = make([]string, len(brokers))
-		copy(server.KafkaBrokers, brokers)
+		server.KafkaBrokers = brokers
 
 		return nil
 	}
 }
 
 // WithKafkaGitHubTopic sets kafka topic name for github webhooks.
-func WithKafkaGitHubTopic(s kafkaconsumer.KafkaTopicIdentifier) Option {
+func WithKafkaGitHubTopic(s kafkacp.KafkaTopicIdentifier) Option {
 	return func(server *Server) error {
-		if err := kafkaconsumer.IsKafkaTopicValid(s); err != nil {
-			return fmt.Errorf("apiserver.WithKafkaGitHubTopic server.KafkaGitHubTopic error: [%w]", err)
+		if !s.Valid() {
+			return fmt.Errorf("apiserver.WithKafkaGitHubTopic server.KafkaGitHubTopic error: [%w]", cerrors.ErrInvalid)
 		}
 		server.KafkaGitHubTopic = s
 
@@ -207,16 +231,8 @@ func New(options ...Option) (*Server, error) {
 		}
 	}
 
-	if server.Logger == nil {
-		return nil, fmt.Errorf("apiserver.New server.Logger error: [%w]", cerrors.ErrValueRequired)
-	}
-
-	if server.Handlers == nil {
-		return nil, fmt.Errorf("apiserver.New server.Handlers error: [%w]", cerrors.ErrValueRequired)
-	}
-
-	if server.KafkaBrokers == nil {
-		return nil, fmt.Errorf("apiserver.New server.KafkaBrokers error: [%w]", cerrors.ErrValueRequired)
+	if err := server.checkRequired(); err != nil {
+		return nil, err
 	}
 
 	httpRouter := func(ctx *fasthttp.RequestCtx) {

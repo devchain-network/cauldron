@@ -3,11 +3,11 @@ package main
 import (
 	"log"
 
-	"github.com/devchain-network/cauldron/internal/kafkaconsumer"
+	"github.com/devchain-network/cauldron/internal/kafkacp/kafkaconsumer/kafkagithubconsumer"
 )
 
 func main() {
-	if err := kafkaconsumer.Run(); err != nil {
+	if err := kafkagithubconsumer.Run(); err != nil {
 		log.Fatal(err)
 	}
 }

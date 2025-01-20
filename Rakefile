@@ -24,9 +24,13 @@ task default: ['run:server']
 namespace :run do
   desc 'run server'
   task :server do
-    system %{ go run -race cmd/server/main.go }
+    run = %{ go run -race cmd/server/main.go }
+    pid = Process.spawn(run)
+    Process.wait(pid)
     $CHILD_STATUS&.exitstatus || 1
   rescue Interrupt
+    Process.getpgid(pid)
+    Process.kill('KILL', pid)
     0
   end
 
@@ -34,9 +38,13 @@ namespace :run do
     namespace :github do
       desc 'run kafka github consumer'
       task :consumer do
-        system %{ go run -race cmd/githubconsumer/main.go }
+        run = %{ go run -race cmd/githubconsumer/main.go }
+        pid = Process.spawn(run)
+        Process.wait(pid)
         $CHILD_STATUS&.exitstatus || 1
       rescue Interrupt
+        Process.getpgid(pid)
+        Process.kill('KILL', pid)
         0
       end
     end
@@ -151,6 +159,7 @@ end
 
 DATABASE_NAME = ENV['DATABASE_NAME'] || nil
 DATABASE_URL = ENV['DATABASE_URL'] || nil
+DATABASE_URL_MIGRATION = ENV['DATABASE_URL_MIGRATION'] || nil
 
 task :pg_running do
   Rake::Task['command_exists'].invoke('pg_isready')
@@ -161,6 +170,9 @@ end
 
 
 namespace :db do
+  desc 'runs rake db:migrate up (shortcut)'
+  task migrate: 'migrate:up'
+
   desc 'reset database (drop and create)'
   task reset: %i[pg_running confirm] do
     system %{
@@ -175,6 +187,7 @@ namespace :db do
 
   desc 'init database'
   task init: %i[pg_running confirm] do
+    abort 'DATABASE_NAME is not set' if DATABASE_NAME.nil?
     unless `psql -Xqtl | cut -d \\| -f1 | grep -qw #{DATABASE_NAME} > /dev/null 2>&1 && echo $?`.chomp.empty?
       abort "#{DATABASE_NAME} is already exists"
     end
@@ -184,12 +197,43 @@ namespace :db do
     0
   end
 
-  desc 'run migrate up'
-  task migrate: [:has_go_migrate] do
-    system %{ migrate -database "#{DATABASE_URL}" -path "migrations" up }
-    $CHILD_STATUS&.exitstatus || 1
-  rescue Interrupt
-    0
+  namespace :migrate do
+    desc 'run migrate up'
+    task up: [:has_go_migrate] do
+      abort 'DATABASE_URL_MIGRATION is not set' if DATABASE_URL_MIGRATION.nil?
+      system %{ migrate -database "#{DATABASE_URL_MIGRATION}" -path "migrations" up }
+      $CHILD_STATUS&.exitstatus || 1
+    rescue Interrupt
+      0
+    end
+
+    desc 'run migrate down'
+    task down: [:has_go_migrate] do
+      abort 'DATABASE_URL_MIGRATION is not set' if DATABASE_URL_MIGRATION.nil?
+      system %{ migrate -database "#{DATABASE_URL_MIGRATION}" -path "migrations" down }
+      $CHILD_STATUS&.exitstatus || 1
+    rescue Interrupt
+      0
+    end
+
+    desc 'go to migration'
+    task :goto, [:index] => %i[has_go_migrate] do |_, args|
+      abort 'DATABASE_URL_MIGRATION is not set' if DATABASE_URL_MIGRATION.nil?
+      args.with_defaults(index: 0)
+
+      index = begin
+        Integer(args.index)
+      rescue ArgumentError
+        0
+      end
+
+      abort 'zero (0) is not a valid index' if index.zero?
+
+      system %{ migrate -database "#{DATABASE_URL_MIGRATION}" -path "migrations" goto #{index} }
+      $CHILD_STATUS&.exitstatus || 1
+    rescue Interrupt
+      0
+    end
   end
 end
 
@@ -225,18 +269,22 @@ rescue Interrupt
   0
 end
 
-desc 'run tests'
-task :test do
-  system %{ go test -failfast -v -coverprofile=coverage.out ./... }
-  $CHILD_STATUS&.exitstatus || 1
-rescue Interrupt
-  0
+namespace :test do
+  task :test_all do
+    system %{ go test -failfast -v -coverprofile=coverage.out ./... }
+    $CHILD_STATUS&.exitstatus || 1
+  rescue Interrupt
+    0
+  end
+
+  desc 'run tests and show coverage'
+  task :coverage do
+    system %{ go test -v -coverprofile=coverage.out ./... && go tool cover -html=coverage.out }
+    $CHILD_STATUS&.exitstatus || 1
+  rescue Interrupt
+    0
+  end
 end
 
-desc 'run tests and show coverage'
-task :coverage do
-  system %{ go test -v -coverprofile=coverage.out ./... && go tool cover -html=coverage.out }
-  $CHILD_STATUS&.exitstatus || 1
-rescue Interrupt
-  0
-end
+desc 'runs tests (shortcut)'
+task test: 'test:test_all'
