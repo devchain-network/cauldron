@@ -37,7 +37,7 @@ CREATE TABLE "github" (
 -- Create indexes
 --
 
-CREATE INDEX "idx_github_target" ON github (target);
+CREATE INDEX "idx_github_target_type" ON github (target_type);
 CREATE INDEX "idx_github_user_login" ON github (user_login);
 CREATE INDEX "idx_github_user_id" ON github (user_id);
 CREATE INDEX "idx_github_payload" ON github USING gin (payload);
