@@ -160,6 +160,7 @@ rake -T
 rake db:init                       # init database
 rake db:migrate                    # runs rake db:migrate up (shortcut)
 rake db:migrate:down               # run migrate down
+rake db:migrate:goto[index]        # go to migration
 rake db:migrate:up                 # run migrate up
 rake db:reset                      # reset database (drop and create)
 rake default                       # default task, runs server
@@ -196,11 +197,12 @@ Display all the `db` related tasks:
 ```bash
 rake -T "db:"
 
-rake db:init          # init database
-rake db:migrate       # runs rake db:migrate up (shortcut)
-rake db:migrate:down  # run migrate down
-rake db:migrate:up    # run migrate up
-rake db:reset         # reset database (drop and create)
+rake db:init                 # init database
+rake db:migrate              # runs rake db:migrate up (shortcut)
+rake db:migrate:down         # run migrate down
+rake db:migrate:goto[index]  # go to migration
+rake db:migrate:up           # run migrate up
+rake db:reset                # reset database (drop and create)
 ```
 
 If you have `postgresql` locally installed, run the following `rake` tasks to
@@ -213,6 +215,13 @@ rake db:migrate   # run migrations
 
 `rake db:reset` task is only used for starting from scratch. Drops and created
 db for you.
+
+`rake db:migrate:down` applies all the migrations through down, kind of returning
+back to initial. If you want to go to specific state, use:
+
+```bash
+rake db:migrate:goto[3]    # go back to `000003_github.up.sql`
+```
 
 You can run each service/component separately with opening multiple terminal
 tabs.

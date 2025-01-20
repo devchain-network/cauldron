@@ -215,6 +215,25 @@ namespace :db do
     rescue Interrupt
       0
     end
+
+    desc 'go to migration'
+    task :goto, [:index] => %i[has_go_migrate] do |_, args|
+      abort 'DATABASE_URL_MIGRATION is not set' if DATABASE_URL_MIGRATION.nil?
+      args.with_defaults(index: 0)
+
+      index = begin
+        Integer(args.index)
+      rescue ArgumentError
+        0
+      end
+
+      abort 'zero (0) is not a valid index' if index.zero?
+
+      system %{ migrate -database "#{DATABASE_URL_MIGRATION}" -path "migrations" goto #{index} }
+      $CHILD_STATUS&.exitstatus || 1
+    rescue Interrupt
+      0
+    end
   end
 end
 
