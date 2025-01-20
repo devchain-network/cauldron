@@ -21,3 +21,17 @@ func GetDefaultConfig() *sarama.Config {
 
 	return config
 }
+
+// GetDefaultConsumerFunc ..
+func GetDefaultConsumerFunc( //nolint:ireturn
+	brokers kafkacp.KafkaBrokers,
+	config *sarama.Config,
+) (sarama.Consumer, error) {
+	return sarama.NewConsumer(brokers.ToStringSlice(), config) //nolint:wrapcheck
+}
+
+// ConfigFunc represents config function type.
+type ConfigFunc func() *sarama.Config
+
+// ConsumerFunc represents consumer function type.
+type ConsumerFunc func(brokers kafkacp.KafkaBrokers, config *sarama.Config) (sarama.Consumer, error)
