@@ -5,13 +5,12 @@ import (
 	"github.com/devchain-network/cauldron/internal/kafkacp"
 )
 
-// KafkaConsumeStorer defines kafka consumer/storer behaviours.
-type KafkaConsumeStorer interface {
+// KafkaConsumer defines kafka consumer behaviours.
+type KafkaConsumer interface {
 	Consume(topic kafkacp.KafkaTopicIdentifier, partition int32) error
-	Store(message *sarama.ConsumerMessage) error
 }
 
-// GetDefaultConfig return consumer config with default values.
+// GetDefaultConfig returns consumer config with default values.
 func GetDefaultConfig() *sarama.Config {
 	config := sarama.NewConfig()
 	config.Consumer.Return.Errors = true
@@ -22,11 +21,8 @@ func GetDefaultConfig() *sarama.Config {
 	return config
 }
 
-// GetDefaultConsumerFunc ..
-func GetDefaultConsumerFunc( //nolint:ireturn
-	brokers kafkacp.KafkaBrokers,
-	config *sarama.Config,
-) (sarama.Consumer, error) {
+// GetDefaultConsumerFunc is a default consumer function.
+func GetDefaultConsumerFunc(brokers kafkacp.KafkaBrokers, config *sarama.Config) (sarama.Consumer, error) {
 	return sarama.NewConsumer(brokers.ToStringSlice(), config) //nolint:wrapcheck
 }
 

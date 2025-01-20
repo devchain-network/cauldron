@@ -1,9 +1,14 @@
 package kafkagithubconsumer
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
+	"os"
+	"os/signal"
+	"runtime"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/IBM/sarama"
@@ -15,9 +20,9 @@ import (
 	"github.com/google/uuid"
 )
 
-var _ kafkaconsumer.KafkaConsumeStorer = (*Consumer)(nil) // compile time proof
+var _ kafkaconsumer.KafkaConsumer = (*Consumer)(nil) // compile time proof
 
-// PrepareGitHubPayloadFunc ...
+// PrepareGitHubPayloadFunc represents header extract and prepagre payload function type.
 type PrepareGitHubPayloadFunc func(msg *sarama.ConsumerMessage) (*githubstorage.GitHub, error)
 
 // PrepareGitHubPayload extracts required values from kafka message header.
@@ -74,28 +79,100 @@ func PrepareGitHubPayload(msg *sarama.ConsumerMessage) (*githubstorage.GitHub, e
 	return githubStorage, nil
 }
 
-// Consumer ...
+// Consumer represents kafa consumer setup.
 type Consumer struct {
-	ConfigFunc     kafkaconsumer.ConfigFunc
-	ConsumerFunc   kafkaconsumer.ConsumerFunc
-	Logger         *slog.Logger
-	Storage        storage.PingStorer
-	SaramaConsumer sarama.Consumer
-	KafkaBrokers   kafkacp.KafkaBrokers
-	Backoff        time.Duration
-	MaxRetries     uint8
+	ConfigFunc        kafkaconsumer.ConfigFunc
+	ConsumerFunc      kafkaconsumer.ConsumerFunc
+	Logger            *slog.Logger
+	Storage           storage.PingStorer
+	SaramaConsumer    sarama.Consumer
+	KafkaBrokers      kafkacp.KafkaBrokers
+	Backoff           time.Duration
+	MaxRetries        uint8
+	MessageBufferSize int
+	NumberOfWorkers   int
 }
 
-// Consume ...
+// Consume consumes message and stores it to database.
 func (c Consumer) Consume(topic kafkacp.KafkaTopicIdentifier, partition int32) error {
-	c.Logger.Info("info", "topic", topic, "partition", partition)
+	partitionConsumer, err := c.SaramaConsumer.ConsumePartition(topic.String(), partition, sarama.OffsetNewest)
+	if err != nil {
+		return fmt.Errorf("kafkagithubconsumer.Consume c.SaramaConsumer.ConsumePartition error: [%w]", err)
+	}
+	defer func() { _ = partitionConsumer.Close() }()
 
-	return nil
-}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-// Store ...
-func (c Consumer) Store(message *sarama.ConsumerMessage) error {
-	c.Logger.Info("message", "message", message)
+	c.Logger.Info("consuming messages from", "topic", topic, "partition", partition)
+
+	messagesQueue := make(chan *sarama.ConsumerMessage, c.MessageBufferSize)
+	c.Logger.Info("starting workers", "count", c.NumberOfWorkers)
+
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt)
+		<-sig
+
+		c.Logger.Info("interrupt received, exiting signal listener")
+		cancel()
+		close(done)
+	}()
+
+	for i := range c.NumberOfWorkers {
+		wg.Add(1)
+		go func() {
+			defer func() {
+				wg.Done()
+				c.Logger.Info("terminating worker", "id", i)
+			}()
+
+			for msg := range messagesQueue {
+				if err = c.Storage.Store(ctx, msg); err != nil {
+					c.Logger.Error("github c.Storage.Store", "error", err, "worker", i)
+
+					continue
+				}
+
+				c.Logger.Info("message stored to github storage", "worker", i)
+			}
+		}()
+	}
+
+	wg.Add(1)
+	go func() {
+		defer func() {
+			close(messagesQueue)
+			wg.Done()
+			c.Logger.Info("exiting message consumer")
+		}()
+
+		for {
+			select {
+			case msg := <-partitionConsumer.Messages():
+				if msg != nil {
+					messagesQueue <- msg
+				}
+			case err := <-partitionConsumer.Errors():
+				c.Logger.Error("partition consumer error", "error", err)
+			case <-ctx.Done():
+				c.Logger.Info("shutting down message consumer")
+
+				return
+			}
+		}
+	}()
+
+	<-done
+	wg.Wait()
+
+	c.Logger.Info("all workers are stopped")
 
 	return nil
 }
@@ -168,6 +245,8 @@ func New(options ...Option) (*Consumer, error) {
 	consumer.MaxRetries = kafkacp.DefaultKafkaConsumerMaxRetries
 	consumer.ConfigFunc = kafkaconsumer.GetDefaultConfig
 	consumer.ConsumerFunc = kafkaconsumer.GetDefaultConsumerFunc
+	consumer.NumberOfWorkers = runtime.NumCPU()
+	consumer.MessageBufferSize = consumer.NumberOfWorkers * 10
 
 	for _, option := range options {
 		if err := option(consumer); err != nil {
