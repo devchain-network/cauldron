@@ -7,9 +7,10 @@ CREATE TYPE git_provider AS ENUM (
 );
 
 CREATE TABLE dcuser (
-    "id" UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    "created_at" TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-    "last_seen_at" TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    "id" SERIAL PRIMARY KEY,
+    "uid" UUID DEFAULT uuid_generate_v4(),
+    "created_at" TIMESTAMP DEFAULT NOW() NOT NULL,
+    "last_seen_at" TIMESTAMP DEFAULT NOW() NOT NULL,
     "git_provider" git_provider NOT NULL,
     "git_provider_user_id" BIGINT NOT NULL,
     "git_provider_user_name" VARCHAR(40) NOT NULL,
@@ -18,13 +19,14 @@ CREATE TABLE dcuser (
 );
 
 CREATE TABLE github_user (
-    "dcuser_id" UUID REFERENCES dcuser(id) ON DELETE CASCADE,
+    "id" SERIAL PRIMARY KEY,
+    "uid" UUID DEFAULT uuid_generate_v4(),
+    "dcuser_id" INT REFERENCES dcuser(id) ON DELETE CASCADE,
     "user_login" VARCHAR(40) NOT NULL,
     "user_id" BIGINT NOT NULL,
     "avatar_url" VARCHAR(255),
     "html_url" VARCHAR(255),
-    "meta_data" JSONB NOT NULL DEFAULT '{}'::jsonb,
-    PRIMARY KEY (dcuser_id)
+    "meta_data" JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
 

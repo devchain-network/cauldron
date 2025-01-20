@@ -10,8 +10,9 @@ CREATE TYPE github_target_type AS ENUM (
 );
 
 CREATE TABLE github (
-    "id" UUID DEFAULT uuid_generate_v4() NOT NULL PRIMARY KEY,
-    "created_at" TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    "id" SERIAL PRIMARY KEY,
+    "uid" UUID DEFAULT uuid_generate_v4(),
+    "created_at" TIMESTAMP DEFAULT NOW() NOT NULL,
     "delivery_id" UUID NOT NULL,
     "event" VARCHAR(128) NOT NULL,
     "target" github_target_type NOT NULL,
