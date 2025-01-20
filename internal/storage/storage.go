@@ -35,6 +35,17 @@ type Pinger interface {
 	Ping(ctx context.Context, maxRetries uint8, backoff time.Duration) error
 }
 
+// Storer defines store behaviour.
+type Storer interface {
+	Store(ctx context.Context, payload any) error
+}
+
+// PingStorer is a combination of pinger and storer functionality.
+type PingStorer interface {
+	Pinger
+	Storer
+}
+
 // GitProvider represents git platform.
 type GitProvider string
 

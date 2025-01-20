@@ -13,8 +13,9 @@ import (
 )
 
 var (
-	_ storage.Pinger   = (*GitHubStorage)(nil) // compile time proof
-	_ GitHubPingStorer = (*GitHubStorage)(nil) // compile time proof
+	_ storage.Pinger     = (*GitHubStorage)(nil) // compile time proof
+	_ storage.Storer     = (*GitHubStorage)(nil) // compile time proof
+	_ storage.PingStorer = (*GitHubStorage)(nil) // compile time proof
 )
 
 // queries.
@@ -46,12 +47,6 @@ type GitHub struct {
 	UserID     int64
 	Offset     int64
 	Partition  int32
-}
-
-// GitHubPingStorer defines github storage behaviours.
-type GitHubPingStorer interface {
-	storage.Pinger
-	Store(ctx context.Context, payload *GitHub) error
 }
 
 // GitHubStorage implements GitHubPingStorer interface.
@@ -91,20 +86,24 @@ func (s GitHubStorage) Ping(ctx context.Context, maxRetries uint8, backoff time.
 }
 
 // Store stores given github webhook data with extras to database.
-func (s GitHubStorage) Store(ctx context.Context, payload *GitHub) error {
+func (s GitHubStorage) Store(ctx context.Context, payload any) error {
+	githubPayload, ok := payload.(*GitHub)
+	if !ok {
+		return fmt.Errorf("githubstorage.GitHubStorage.Store payload error: [%w]", cerrors.ErrInvalid)
+	}
 	_, err := s.Pool.Exec(
 		ctx,
 		GitHubStoreQuery,
-		payload.DeliveryID,
-		payload.Event,
-		payload.Target,
-		payload.TargetID,
-		payload.HookID,
-		payload.UserLogin,
-		payload.UserID,
-		payload.Offset,
-		payload.Partition,
-		payload.Payload,
+		githubPayload.DeliveryID,
+		githubPayload.Event,
+		githubPayload.Target,
+		githubPayload.TargetID,
+		githubPayload.HookID,
+		githubPayload.UserLogin,
+		githubPayload.UserID,
+		githubPayload.Offset,
+		githubPayload.Partition,
+		githubPayload.Payload,
 	)
 	if err != nil {
 		return fmt.Errorf("githubstorage.GitHubStorage.Store error: [%w]", err)

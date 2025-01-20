@@ -9,7 +9,7 @@ import (
 	"github.com/devchain-network/cauldron/internal/cerrors"
 	"github.com/devchain-network/cauldron/internal/kafkacp"
 	"github.com/devchain-network/cauldron/internal/kafkacp/kafkaconsumer"
-	"github.com/devchain-network/cauldron/internal/storage/githubstorage"
+	"github.com/devchain-network/cauldron/internal/storage"
 )
 
 var _ kafkaconsumer.KafkaConsumeStorer = (*Consumer)(nil) // compile time proof
@@ -18,7 +18,7 @@ var _ kafkaconsumer.KafkaConsumeStorer = (*Consumer)(nil) // compile time proof
 type Consumer struct {
 	Logger     *slog.Logger
 	Config     *sarama.Config
-	Storage    githubstorage.GitHubPingStorer
+	Storage    storage.PingStorer
 	Backoff    time.Duration
 	MaxRetries uint8
 }
@@ -65,7 +65,7 @@ func WithLogger(l *slog.Logger) Option {
 }
 
 // WithStorage sets storage value.
-func WithStorage(st githubstorage.GitHubPingStorer) Option {
+func WithStorage(st storage.PingStorer) Option {
 	return func(c *Consumer) error {
 		if st == nil {
 			return fmt.Errorf("kafkagithubconsumer.WithStorage error: [%w]", cerrors.ErrValueRequired)
