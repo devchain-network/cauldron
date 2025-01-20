@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"strings"
 	"sync"
 	"syscall"
 
@@ -40,13 +39,7 @@ func Run() error {
 	}
 
 	var kafkaBrokers kafkacp.KafkaBrokers
-	brokerSlice := strings.Split(*brokersList, ",")
-	for _, addr := range brokerSlice {
-		brokerAddr := kafkacp.TCPAddr(addr)
-		if brokerAddr.Valid() {
-			kafkaBrokers = append(kafkaBrokers, brokerAddr)
-		}
-	}
+	kafkaBrokers.AddFromString(*brokersList)
 
 	kafkaProducer, err := kafkaproducer.New(
 		kafkaproducer.WithLogger(logger),

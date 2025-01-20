@@ -173,16 +173,16 @@ func TestStore(t *testing.T) {
 		}
 
 		payload := &githubstorage.GitHub{
-			DeliveryID: uuid.New(),
-			Event:      "push",
-			Target:     "repo",
-			UserLogin:  "test_user",
-			TargetID:   12345,
-			HookID:     67890,
-			UserID:     112233,
-			Offset:     0,
-			Partition:  1,
-			Payload:    "example payload",
+			DeliveryID:     uuid.New(),
+			Event:          "push",
+			TargetType:     "repo",
+			UserLogin:      "test_user",
+			TargetID:       12345,
+			HookID:         67890,
+			UserID:         112233,
+			KafkaOffset:    0,
+			KafkaPartition: 1,
+			Payload:        "example payload",
 		}
 
 		ctx := context.Background()
@@ -202,16 +202,16 @@ func TestStore(t *testing.T) {
 		}
 
 		payload := &githubstorage.GitHub{
-			DeliveryID: uuid.New(),
-			Event:      "push",
-			Target:     "repo",
-			UserLogin:  "test_user",
-			TargetID:   12345,
-			HookID:     67890,
-			UserID:     112233,
-			Offset:     0,
-			Partition:  1,
-			Payload:    "example payload",
+			DeliveryID:     uuid.New(),
+			Event:          "push",
+			TargetType:     "repo",
+			UserLogin:      "test_user",
+			TargetID:       12345,
+			HookID:         67890,
+			UserID:         112233,
+			KafkaOffset:    0,
+			KafkaPartition: 1,
+			Payload:        "example payload",
 		}
 
 		ctx := context.Background()

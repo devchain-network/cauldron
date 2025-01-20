@@ -83,6 +83,10 @@ func (k KafkaBrokers) String() string {
 
 // Valid checks if all TCPAddr elements in KafkaBrokers are valid.
 func (k KafkaBrokers) Valid() bool {
+	if k == nil {
+		return false
+	}
+
 	for _, broker := range k {
 		if !broker.Valid() {
 			return false
@@ -100,4 +104,15 @@ func (k KafkaBrokers) ToStringSlice() []string {
 	}
 
 	return result
+}
+
+// AddFromString populates KafkaBrokers from comma-separated string.
+func (k *KafkaBrokers) AddFromString(brokers string) {
+	brokerSlice := strings.Split(brokers, ",")
+	for _, addr := range brokerSlice {
+		brokerAddr := TCPAddr(addr)
+		if brokerAddr.Valid() {
+			*k = append(*k, brokerAddr)
+		}
+	}
 }

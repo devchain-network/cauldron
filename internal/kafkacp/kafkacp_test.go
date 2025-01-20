@@ -283,3 +283,61 @@ func TestKafkaBrokers_ToStringSlice(t *testing.T) {
 		})
 	}
 }
+
+func TestKafkaBrokers_AddFromString(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		want      kafkacp.KafkaBrokers
+		wantValid bool
+	}{
+		{
+			name:      "single valid broker",
+			input:     "127.0.0.1:9094",
+			want:      kafkacp.KafkaBrokers{kafkacp.TCPAddr("127.0.0.1:9094")},
+			wantValid: true,
+		},
+		{
+			name:  "multiple valid brokers",
+			input: "127.0.0.1:9094,192.168.1.1:9092",
+			want: kafkacp.KafkaBrokers{
+				kafkacp.TCPAddr("127.0.0.1:9094"),
+				kafkacp.TCPAddr("192.168.1.1:9092"),
+			},
+			wantValid: true,
+		},
+		{
+			name:      "empty input string",
+			input:     "",
+			want:      kafkacp.KafkaBrokers(nil),
+			wantValid: false,
+		},
+		{
+			name:      "includes invalid broker",
+			input:     "127.0.0.1:9094,invalid-address",
+			want:      kafkacp.KafkaBrokers{kafkacp.TCPAddr("127.0.0.1:9094")},
+			wantValid: true,
+		},
+		{
+			name:      "all invalid brokers",
+			input:     "invalid-address1,invalid-address2",
+			want:      kafkacp.KafkaBrokers(nil),
+			wantValid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var brokers kafkacp.KafkaBrokers
+			brokers.AddFromString(tt.input)
+
+			assert.Equal(t, tt.want, brokers, "KafkaBrokers.AddFromString() should populate correctly")
+
+			if tt.wantValid {
+				assert.True(t, brokers.Valid(), "KafkaBrokers.AddFromString() should produce a valid brokers list")
+			} else {
+				assert.False(t, brokers.Valid(), "KafkaBrokers.AddFromString() should produce an invalid brokers list")
+			}
+		})
+	}
+}

@@ -24,29 +24,29 @@ const (
 	INSERT INTO github (
 		delivery_id, 
 		event, 
-		target, 
+		target_type, 
 		target_id, 
 		hook_id, 
 		user_login, 
 		user_id, 
-		"offset", 
-		partition, 
+		kafka_offset, 
+		kafka_partition, 
 		payload
 	) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
 )
 
 // GitHub represents `github` table model fields.
 type GitHub struct {
-	Payload    any
-	Event      string
-	Target     string
-	UserLogin  string
-	DeliveryID uuid.UUID
-	TargetID   uint64
-	HookID     uint64
-	UserID     int64
-	Offset     int64
-	Partition  int32
+	Payload        any
+	Event          string
+	TargetType     string
+	UserLogin      string
+	DeliveryID     uuid.UUID
+	TargetID       uint64
+	HookID         uint64
+	UserID         int64
+	KafkaOffset    int64
+	KafkaPartition int32
 }
 
 // GitHubStorage implements GitHubPingStorer interface.
@@ -96,13 +96,13 @@ func (s GitHubStorage) Store(ctx context.Context, payload any) error {
 		GitHubStoreQuery,
 		githubPayload.DeliveryID,
 		githubPayload.Event,
-		githubPayload.Target,
+		githubPayload.TargetType,
 		githubPayload.TargetID,
 		githubPayload.HookID,
 		githubPayload.UserLogin,
 		githubPayload.UserID,
-		githubPayload.Offset,
-		githubPayload.Partition,
+		githubPayload.KafkaOffset,
+		githubPayload.KafkaPartition,
 		githubPayload.Payload,
 	)
 	if err != nil {

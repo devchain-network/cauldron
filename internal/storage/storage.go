@@ -26,6 +26,7 @@ var validGitProviders = []GitProvider{
 
 // PGPooler defines pgxpool behaviours.
 type PGPooler interface {
+	Close()
 	Ping(ctx context.Context) error
 	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 }
