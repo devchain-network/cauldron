@@ -157,9 +157,10 @@ of `rake tasks`:
 ```bash
 rake -T
 
-rake coverage                      # run tests and show coverage
 rake db:init                       # init database
-rake db:migrate                    # run migrate up
+rake db:migrate                    # runs rake db:migrate up (shortcut)
+rake db:migrate:down               # run migrate down
+rake db:migrate:up                 # run migrate up
 rake db:reset                      # reset database (drop and create)
 rake default                       # default task, runs server
 rake docker:build:github_consumer  # build github consumer
@@ -177,14 +178,17 @@ rake rubocop:autofix               # lint ruby and autofix
 rake rubocop:lint                  # lint ruby
 rake run:kafka:github:consumer     # run kafka github consumer
 rake run:server                    # run server
-rake test                          # run tests
+rake test                          # runs tests (shortcut)
+rake test:coverage                 # run tests and show coverage
 ```
 
 You can run tests:
 
 ```bash
-rake test      # or,
-rake coverage  # run tests and display code coverage in browser
+rake -T "test"
+
+rake test           # runs tests (shortcut)
+rake test:coverage  # run tests and show coverage
 ```
 
 Display all the `db` related tasks:
@@ -192,9 +196,11 @@ Display all the `db` related tasks:
 ```bash
 rake -T "db:"
 
-rake db:init     # init database
-rake db:migrate  # run migrate up
-rake db:reset    # reset database (drop and create)
+rake db:init          # init database
+rake db:migrate       # runs rake db:migrate up (shortcut)
+rake db:migrate:down  # run migrate down
+rake db:migrate:up    # run migrate up
+rake db:reset         # reset database (drop and create)
 ```
 
 If you have `postgresql` locally installed, run the following `rake` tasks to

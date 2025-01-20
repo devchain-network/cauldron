@@ -170,6 +170,9 @@ end
 
 
 namespace :db do
+  desc 'runs rake db:migrate up (shortcut)'
+  task migrate: 'migrate:up'
+
   desc 'reset database (drop and create)'
   task reset: %i[pg_running confirm] do
     system %{
@@ -194,13 +197,24 @@ namespace :db do
     0
   end
 
-  desc 'run migrate up'
-  task migrate: [:has_go_migrate] do
-    abort 'DATABASE_URL_MIGRATION is not set' if DATABASE_URL_MIGRATION.nil?
-    system %{ migrate -database "#{DATABASE_URL_MIGRATION}" -path "migrations" up }
-    $CHILD_STATUS&.exitstatus || 1
-  rescue Interrupt
-    0
+  namespace :migrate do
+    desc 'run migrate up'
+    task up: [:has_go_migrate] do
+      abort 'DATABASE_URL_MIGRATION is not set' if DATABASE_URL_MIGRATION.nil?
+      system %{ migrate -database "#{DATABASE_URL_MIGRATION}" -path "migrations" up }
+      $CHILD_STATUS&.exitstatus || 1
+    rescue Interrupt
+      0
+    end
+
+    desc 'run migrate down'
+    task down: [:has_go_migrate] do
+      abort 'DATABASE_URL_MIGRATION is not set' if DATABASE_URL_MIGRATION.nil?
+      system %{ migrate -database "#{DATABASE_URL_MIGRATION}" -path "migrations" down }
+      $CHILD_STATUS&.exitstatus || 1
+    rescue Interrupt
+      0
+    end
   end
 end
 
@@ -236,18 +250,22 @@ rescue Interrupt
   0
 end
 
-desc 'run tests'
-task :test do
-  system %{ go test -failfast -v -coverprofile=coverage.out ./... }
-  $CHILD_STATUS&.exitstatus || 1
-rescue Interrupt
-  0
+namespace :test do
+  task :test_all do
+    system %{ go test -failfast -v -coverprofile=coverage.out ./... }
+    $CHILD_STATUS&.exitstatus || 1
+  rescue Interrupt
+    0
+  end
+
+  desc 'run tests and show coverage'
+  task :coverage do
+    system %{ go test -v -coverprofile=coverage.out ./... && go tool cover -html=coverage.out }
+    $CHILD_STATUS&.exitstatus || 1
+  rescue Interrupt
+    0
+  end
 end
 
-desc 'run tests and show coverage'
-task :coverage do
-  system %{ go test -v -coverprofile=coverage.out ./... && go tool cover -html=coverage.out }
-  $CHILD_STATUS&.exitstatus || 1
-rescue Interrupt
-  0
-end
+desc 'runs tests (shortcut)'
+task test: 'test:test_all'
