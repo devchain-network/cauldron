@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
+	"github.com/IBM/sarama"
 	"github.com/devchain-network/cauldron/internal/cerrors"
 	"github.com/devchain-network/cauldron/internal/storage"
 	"github.com/google/uuid"
@@ -13,9 +15,9 @@ import (
 )
 
 var (
-	_ storage.Pinger     = (*GitHubStorage)(nil) // compile time proof
-	_ storage.Storer     = (*GitHubStorage)(nil) // compile time proof
-	_ storage.PingStorer = (*GitHubStorage)(nil) // compile time proof
+	_ storage.Pinger        = (*GitHubStorage)(nil) // compile time proof
+	_ storage.MessageStorer = (*GitHubStorage)(nil) // compile time proof
+	_ storage.PingStorer    = (*GitHubStorage)(nil) // compile time proof
 )
 
 // queries.
@@ -56,6 +58,61 @@ type GitHubStorage struct {
 	DatabaseDSN string
 }
 
+func (GitHubStorage) prepareGitHubPayload(message *sarama.ConsumerMessage) (*GitHub, error) {
+	githubStorage := new(GitHub)
+
+	deliveryID, err := uuid.Parse(string(message.Key))
+	if err != nil {
+		return nil, fmt.Errorf("githubstorage prepareGitHubPayload deliveryID error: [%w]", err)
+	}
+	githubStorage.DeliveryID = deliveryID
+
+	var targetID uint64
+	var targetIDErr error
+
+	var hookID uint64
+	var hookIDErr error
+
+	var userID int64
+	var userIDErr error
+
+	for _, header := range message.Headers {
+		key := string(header.Key)
+		value := string(header.Value)
+
+		switch key {
+		case "event":
+			githubStorage.Event = value
+		case "target-type":
+			githubStorage.TargetType = value
+		case "target-id":
+			targetID, targetIDErr = strconv.ParseUint(value, 10, 64)
+			if targetIDErr != nil {
+				return nil, fmt.Errorf("githubstorage prepareGitHubPayload targetID error: [%w]", targetIDErr)
+			}
+			githubStorage.TargetID = targetID
+		case "hook-id":
+			hookID, hookIDErr = strconv.ParseUint(value, 10, 64)
+			if hookIDErr != nil {
+				return nil, fmt.Errorf("githubstorage prepareGitHubPayload hookID error: [%w]", hookIDErr)
+			}
+			githubStorage.HookID = hookID
+		case "sender-login":
+			githubStorage.UserLogin = value
+		case "sender-id":
+			userID, userIDErr = strconv.ParseInt(value, 10, 64)
+			if userIDErr != nil {
+				return nil, fmt.Errorf("githubstorage prepareGitHubPayload userID error: [%w]", userIDErr)
+			}
+			githubStorage.UserID = userID
+		}
+	}
+
+	githubStorage.Payload = message.Value
+
+	return githubStorage, nil
+}
+
 // Ping pings database and makes sure db communication is ok.
 func (s GitHubStorage) Ping(ctx context.Context, maxRetries uint8, backoff time.Duration) error {
 	var pingErr error
@@ -85,28 +142,29 @@ func (s GitHubStorage) Ping(ctx context.Context, maxRetries uint8, backoff time.
 	return nil
 }
 
-// Store stores given github webhook data with extras to database.
-func (s GitHubStorage) Store(ctx context.Context, payload any) error {
-	githubPayload, ok := payload.(*GitHub)
-	if !ok {
-		return fmt.Errorf("githubstorage.GitHubStorage.Store payload error: [%w]", cerrors.ErrInvalid)
+// MessageStore stores received kafka message to database.
+func (s GitHubStorage) MessageStore(ctx context.Context, message *sarama.ConsumerMessage) error {
+	payload, err := s.prepareGitHubPayload(message)
+	if err != nil {
+		return fmt.Errorf("githubstorage Store payload error: [%w]", err)
 	}
-	_, err := s.Pool.Exec(
+
+	_, err = s.Pool.Exec(
 		ctx,
 		GitHubStoreQuery,
-		githubPayload.DeliveryID,
-		githubPayload.Event,
-		githubPayload.TargetType,
-		githubPayload.TargetID,
-		githubPayload.HookID,
-		githubPayload.UserLogin,
-		githubPayload.UserID,
-		githubPayload.KafkaOffset,
-		githubPayload.KafkaPartition,
-		githubPayload.Payload,
+		payload.DeliveryID,
+		payload.Event,
+		payload.TargetType,
+		payload.TargetID,
+		payload.HookID,
+		payload.UserLogin,
+		payload.UserID,
+		payload.KafkaOffset,
+		payload.KafkaPartition,
+		payload.Payload,
 	)
 	if err != nil {
-		return fmt.Errorf("githubstorage.GitHubStorage.Store error: [%w]", err)
+		return fmt.Errorf("githubstorage Store Pool.Exec error: [%w]", err)
 	}
 
 	return nil

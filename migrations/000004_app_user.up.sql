@@ -18,8 +18,8 @@ CREATE TYPE "cauldron"."git_provider" AS ENUM (
 CREATE TABLE "cauldron"."app_user" (
     "id" SERIAL PRIMARY KEY,
     "uid" UUID DEFAULT uuid_generate_v4(),
-    "created_at" TIMESTAMP DEFAULT NOW() NOT NULL,
-    "last_seen_at" TIMESTAMP DEFAULT NOW() NOT NULL,
+    "created_at" TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'UTC'),
+    "last_seen_at" TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'UTC'),
     "git_provider" "cauldron"."git_provider" NOT NULL,
     "git_provider_user_id" BIGINT NOT NULL,
     "git_provider_user_name" VARCHAR(40) NOT NULL,

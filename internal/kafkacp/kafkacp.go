@@ -3,7 +3,6 @@ package kafkacp
 import (
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/vigo/getenv"
 )
@@ -11,19 +10,6 @@ import (
 // defaults.
 const (
 	DefaultKafkaBrokers = "127.0.0.1:9094"
-
-	DefaultKafkaProducerDialTimeout  = 30 * time.Second
-	DefaultKafkaProducerReadTimeout  = 30 * time.Second
-	DefaultKafkaProducerWriteTimeout = 30 * time.Second
-	DefaultKafkaProducerBackoff      = 2 * time.Second
-	DefaultKafkaProducerMaxRetries   = 10
-
-	DefaultKafkaConsumerPartition    = 0
-	DefaultKafkaConsumerDialTimeout  = 30 * time.Second
-	DefaultKafkaConsumerReadTimeout  = 30 * time.Second
-	DefaultKafkaConsumerWriteTimeout = 30 * time.Second
-	DefaultKafkaConsumerBackoff      = 2 * time.Second
-	DefaultKafkaConsumerMaxRetries   = 10
 
 	KafkaTopicIdentifierGitHub    KafkaTopicIdentifier = "github"
 	KafkaTopicIdentifierGitLab    KafkaTopicIdentifier = "gitlab"

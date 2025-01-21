@@ -20,7 +20,7 @@ CREATE TYPE "cauldron"."github_target_type" AS ENUM (
 CREATE TABLE "cauldron"."github" (
     "id" SERIAL PRIMARY KEY,
     "uid" UUID DEFAULT uuid_generate_v4(),
-    "created_at" TIMESTAMP DEFAULT NOW() NOT NULL,
+    "created_at" TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'UTC'),
     "delivery_id" UUID NOT NULL,
     "event" VARCHAR(128) NOT NULL,
     "target_type" "cauldron"."github_target_type" NOT NULL,

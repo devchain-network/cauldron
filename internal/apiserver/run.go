@@ -23,8 +23,13 @@ func Run() error {
 	listenAddr := getenv.TCPAddr("LISTEN_ADDR", serverDefaultListenAddr)
 	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
 	brokersList := getenv.String("KCP_BROKERS", kafkacp.DefaultKafkaBrokers)
-	backoff := getenv.Duration("KC_BACKOFF", kafkacp.DefaultKafkaProducerBackoff)
-	maxRetries := getenv.Int("KC_MAX_RETRIES", kafkacp.DefaultKafkaProducerMaxRetries)
+
+	dialTimeout := getenv.Duration("KP_DIAL_TIMEOUT", kafkaproducer.DefaultDialTimeout)
+	readTimeout := getenv.Duration("KP_READ_TIMEOUT", kafkaproducer.DefaultReadTimeout)
+	writeTimeout := getenv.Duration("KP_WRITE_TIMEOUT", kafkaproducer.DefaultWriteTimeout)
+	backoff := getenv.Duration("KC_BACKOFF", kafkaproducer.DefaultBackoff)
+	maxRetries := getenv.Int("KC_MAX_RETRIES", kafkaproducer.DefaultMaxRetries)
+
 	githubHMACSecret := getenv.String("GITHUB_HMAC_SECRET", "")
 	githubWebhookMessageQueueSize := getenv.Int("KP_GITHUB_MESSAGE_QUEUE_SIZE", kpDefaultQueueSize)
 	if err := getenv.Parse(); err != nil {
@@ -46,6 +51,9 @@ func Run() error {
 		kafkaproducer.WithKafkaBrokers(kafkaBrokers),
 		kafkaproducer.WithMaxRetries(*maxRetries),
 		kafkaproducer.WithBackoff(*backoff),
+		kafkaproducer.WithDialTimeout(*dialTimeout),
+		kafkaproducer.WithReadTimeout(*readTimeout),
+		kafkaproducer.WithWriteTimeout(*writeTimeout),
 	)
 	if err != nil {
 		return fmt.Errorf("apiserver.Run kafkaproducer.New error: [%w]", err)

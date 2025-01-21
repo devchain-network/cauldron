@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/IBM/sarama"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
@@ -36,15 +37,15 @@ type Pinger interface {
 	Ping(ctx context.Context, maxRetries uint8, backoff time.Duration) error
 }
 
-// Storer defines store behaviour.
-type Storer interface {
-	Store(ctx context.Context, payload any) error
+// MessageStorer defines kafka message store behaviour.
+type MessageStorer interface {
+	MessageStore(ctx context.Context, message *sarama.ConsumerMessage) error
 }
 
 // PingStorer is a combination of pinger and storer functionality.
 type PingStorer interface {
 	Pinger
-	Storer
+	MessageStorer
 }
 
 // GitProvider represents git platform.

@@ -10,23 +10,22 @@ import (
 	"github.com/devchain-network/cauldron/internal/kafkacp"
 )
 
-// GetDefaultConfig returns consumer config with default values.
-func GetDefaultConfig() *sarama.Config {
-	config := sarama.NewConfig()
-	config.Net.DialTimeout = kafkacp.DefaultKafkaProducerDialTimeout
-	config.Net.ReadTimeout = kafkacp.DefaultKafkaProducerReadTimeout
-	config.Net.WriteTimeout = kafkacp.DefaultKafkaProducerWriteTimeout
-	config.Producer.RequiredAcks = sarama.WaitForAll
-	config.Producer.Return.Successes = true
-	config.Producer.Return.Errors = true
-
-	return config
-}
+// defaults.
+const (
+	DefaultDialTimeout  = 30 * time.Second
+	DefaultReadTimeout  = 30 * time.Second
+	DefaultWriteTimeout = 30 * time.Second
+	DefaultBackoff      = 2 * time.Second
+	DefaultMaxRetries   = 10
+)
 
 // Producer holds required arguments.
 type Producer struct {
 	Logger       *slog.Logger
 	KafkaBrokers kafkacp.KafkaBrokers
+	DialTimeout  time.Duration
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
 	MaxRetries   uint8
 	Backoff      time.Duration
 }
@@ -94,11 +93,50 @@ func WithBackoff(d time.Duration) Option {
 	}
 }
 
+// WithDialTimeout sets dial timeout.
+func WithDialTimeout(d time.Duration) Option {
+	return func(p *Producer) error {
+		if d < 0 {
+			return fmt.Errorf("kafkaproducer.WithDialTimeout error: [%w]", cerrors.ErrInvalid)
+		}
+		p.DialTimeout = d
+
+		return nil
+	}
+}
+
+// WithReadTimeout sets read timeout.
+func WithReadTimeout(d time.Duration) Option {
+	return func(p *Producer) error {
+		if d < 0 {
+			return fmt.Errorf("kafkaproducer.WithReadTimeout error: [%w]", cerrors.ErrInvalid)
+		}
+		p.ReadTimeout = d
+
+		return nil
+	}
+}
+
+// WithWriteTimeout sets write timeout.
+func WithWriteTimeout(d time.Duration) Option {
+	return func(p *Producer) error {
+		if d < 0 {
+			return fmt.Errorf("kafkaproducer.WithWriteTimeout error: [%w]", cerrors.ErrInvalid)
+		}
+		p.WriteTimeout = d
+
+		return nil
+	}
+}
+
 // New instantiates new kafka producer.
 func New(options ...Option) (sarama.AsyncProducer, error) {
 	producer := new(Producer)
-	producer.MaxRetries = kafkacp.DefaultKafkaProducerMaxRetries
-	producer.Backoff = kafkacp.DefaultKafkaProducerBackoff
+	producer.DialTimeout = DefaultDialTimeout
+	producer.ReadTimeout = DefaultReadTimeout
+	producer.WriteTimeout = DefaultWriteTimeout
+	producer.MaxRetries = DefaultMaxRetries
+	producer.Backoff = DefaultBackoff
 
 	for _, option := range options {
 		if err := option(producer); err != nil {
@@ -110,17 +148,20 @@ func New(options ...Option) (sarama.AsyncProducer, error) {
 		return nil, err
 	}
 
-	kafkaConfig := sarama.NewConfig()
-	kafkaConfig.Producer.RequiredAcks = sarama.WaitForAll
-	kafkaConfig.Producer.Return.Successes = true
-	kafkaConfig.Producer.Return.Errors = true
+	config := sarama.NewConfig()
+	config.Producer.RequiredAcks = sarama.WaitForAll
+	config.Producer.Return.Successes = true
+	config.Producer.Return.Errors = true
+	config.Net.DialTimeout = producer.DialTimeout
+	config.Net.ReadTimeout = producer.ReadTimeout
+	config.Net.WriteTimeout = producer.WriteTimeout
 
 	var kafkaProducer sarama.AsyncProducer
 	var kafkaProducerErr error
 	backoff := producer.Backoff
 
 	for i := range producer.MaxRetries {
-		kafkaProducer, kafkaProducerErr = sarama.NewAsyncProducer(producer.KafkaBrokers.ToStringSlice(), kafkaConfig)
+		kafkaProducer, kafkaProducerErr = sarama.NewAsyncProducer(producer.KafkaBrokers.ToStringSlice(), config)
 		if kafkaProducerErr == nil {
 			break
 		}
