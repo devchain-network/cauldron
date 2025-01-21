@@ -12,8 +12,11 @@ import (
 const (
 	DefaultKafkaBrokers = "127.0.0.1:9094"
 
-	DefaultKafkaProducerBackoff    = 2 * time.Second
-	DefaultKafkaProducerMaxRetries = 10
+	DefaultKafkaProducerDialTimeout  = 30 * time.Second
+	DefaultKafkaProducerReadTimeout  = 30 * time.Second
+	DefaultKafkaProducerWriteTimeout = 30 * time.Second
+	DefaultKafkaProducerBackoff      = 2 * time.Second
+	DefaultKafkaProducerMaxRetries   = 10
 
 	DefaultKafkaConsumerPartition    = 0
 	DefaultKafkaConsumerDialTimeout  = 30 * time.Second

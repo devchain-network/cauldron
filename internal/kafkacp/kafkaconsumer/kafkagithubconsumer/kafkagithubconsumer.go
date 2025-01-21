@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"os/signal"
 	"runtime"
@@ -85,6 +86,7 @@ func PrepareGitHubPayload(msg *sarama.ConsumerMessage) (*githubstorage.GitHub, e
 
 // Consumer represents kafa consumer setup.
 type Consumer struct {
+	Topic                    kafkacp.KafkaTopicIdentifier
 	ConfigFunc               kafkaconsumer.ConfigFunc
 	ConsumerFunc             kafkaconsumer.ConsumerFunc
 	PrepareGitHubPayloadFunc PrepareGitHubPayloadFunc
@@ -92,15 +94,19 @@ type Consumer struct {
 	Storage                  storage.PingStorer
 	SaramaConsumer           sarama.Consumer
 	KafkaBrokers             kafkacp.KafkaBrokers
+	DialTimeout              time.Duration
+	ReadTimeout              time.Duration
+	WriteTimeout             time.Duration
 	Backoff                  time.Duration
 	MaxRetries               uint8
+	Partition                int32
 	MessageBufferSize        int
 	NumberOfWorkers          int
 }
 
 // Consume consumes message and stores it to database.
-func (c Consumer) Consume(topic kafkacp.KafkaTopicIdentifier, partition int32) error {
-	partitionConsumer, err := c.SaramaConsumer.ConsumePartition(topic.String(), partition, sarama.OffsetNewest)
+func (c Consumer) Consume() error {
+	partitionConsumer, err := c.SaramaConsumer.ConsumePartition(c.Topic.String(), c.Partition, sarama.OffsetNewest)
 	if err != nil {
 		return fmt.Errorf("kafkagithubconsumer.Consume c.SaramaConsumer.ConsumePartition error: [%w]", err)
 	}
@@ -109,7 +115,7 @@ func (c Consumer) Consume(topic kafkacp.KafkaTopicIdentifier, partition int32) e
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	c.Logger.Info("consuming messages from", "topic", topic, "partition", partition)
+	c.Logger.Info("consuming messages from", "topic", c.Topic, "partition", c.Partition)
 
 	messagesQueue := make(chan *sarama.ConsumerMessage, c.MessageBufferSize)
 	c.Logger.Info("starting workers", "count", c.NumberOfWorkers)
@@ -199,6 +205,10 @@ func (c *Consumer) checkRequired() error {
 		return fmt.Errorf("kafkagithubconsumer.New Storage error: [%w]", cerrors.ErrValueRequired)
 	}
 
+	if !c.Topic.Valid() {
+		return fmt.Errorf("kafkagithubconsumer.New Topic error: [%w]", cerrors.ErrInvalid)
+	}
+
 	return nil
 }
 
@@ -246,6 +256,111 @@ func WithConsumerFunc(f kafkaconsumer.ConsumerFunc) Option {
 		if f != nil {
 			c.ConsumerFunc = f
 		}
+
+		return nil
+	}
+}
+
+// WithTopic sets topic name to consume.
+func WithTopic(s string) Option {
+	return func(c *Consumer) error {
+		kt := kafkacp.KafkaTopicIdentifier(s)
+		if !kt.Valid() {
+			return fmt.Errorf("kafkagithubconsumer.WithTopic error: [%w]", cerrors.ErrInvalid)
+		}
+		c.Topic = kt
+
+		return nil
+	}
+}
+
+// WithPartition sets partition.
+func WithPartition(i int) Option {
+	return func(c *Consumer) error {
+		if i < 0 || i > math.MaxInt32 {
+			return fmt.Errorf("kafkagithubconsumer.WithPartition error: [%w]", cerrors.ErrInvalid)
+		}
+		c.Partition = int32(i)
+
+		return nil
+	}
+}
+
+// WithKafkaBrokers sets kafka brokers list.
+func WithKafkaBrokers(brokers string) Option {
+	return func(c *Consumer) error {
+		var kafkaBrokers kafkacp.KafkaBrokers
+		kafkaBrokers.AddFromString(brokers)
+		if !kafkaBrokers.Valid() {
+			return fmt.Errorf("kafkagithubconsumer.WithKafkaBrokers error: [%w]", cerrors.ErrInvalid)
+		}
+
+		c.KafkaBrokers = kafkaBrokers
+
+		return nil
+	}
+}
+
+// WithDialTimeout sets dial timeout.
+func WithDialTimeout(d time.Duration) Option {
+	return func(c *Consumer) error {
+		if d < 0 {
+			return fmt.Errorf("kafkagithubconsumer.WithDialTimeout error: [%w]", cerrors.ErrInvalid)
+		}
+		c.DialTimeout = d
+
+		return nil
+	}
+}
+
+// WithReadTimeout sets read timeout.
+func WithReadTimeout(d time.Duration) Option {
+	return func(c *Consumer) error {
+		if d < 0 {
+			return fmt.Errorf("kafkagithubconsumer.WithReadTimeout error: [%w]", cerrors.ErrInvalid)
+		}
+		c.ReadTimeout = d
+
+		return nil
+	}
+}
+
+// WithWriteTimeout sets write timeout.
+func WithWriteTimeout(d time.Duration) Option {
+	return func(c *Consumer) error {
+		if d < 0 {
+			return fmt.Errorf("kafkagithubconsumer.WithWriteTimeout error: [%w]", cerrors.ErrInvalid)
+		}
+		c.WriteTimeout = d
+
+		return nil
+	}
+}
+
+// WithBackoff sets backoff duration.
+func WithBackoff(d time.Duration) Option {
+	return func(c *Consumer) error {
+		if d == 0 {
+			return fmt.Errorf("kafkagithubconsumer.WithBackoff error: [%w]", cerrors.ErrValueRequired)
+		}
+
+		if d < 0 || d > time.Minute {
+			return fmt.Errorf("kafkagithubconsumer.WithBackoff error: [%w]", cerrors.ErrInvalid)
+		}
+
+		c.Backoff = d
+
+		return nil
+	}
+}
+
+// WithMaxRetries sets max retries value.
+func WithMaxRetries(i int) Option {
+	return func(c *Consumer) error {
+		if i > math.MaxUint8 || i < 0 {
+			return fmt.Errorf("kafkagithubconsumer.WithMaxRetries error: [%w]", cerrors.ErrInvalid)
+		}
+		c.MaxRetries = uint8(i)
 
 		return nil
 	}
@@ -325,17 +440,6 @@ func Run() error {
 		return fmt.Errorf("kafkagithubconsumer.Run getenv.Parse error: [%w]", err)
 	}
 
-	// fmt.Println("logLevel", *logLevel)
-	fmt.Println("partition", *partition)
-	fmt.Println("topic", *topic)
-	fmt.Println("brokersList", *brokersList)
-	fmt.Println("dialTimeout", *dialTimeout)
-	fmt.Println("readTimeout", *readTimeout)
-	fmt.Println("writeTimeout", *writeTimeout)
-	fmt.Println("backoff", *backoff)
-	fmt.Println("maxRetries", *maxRetries)
-	// fmt.Println("databaseURL", *databaseURL)
-
 	logger, err := slogger.New(
 		slogger.WithLogLevelName(*logLevel),
 	)
@@ -366,6 +470,14 @@ func Run() error {
 	kafkaGitHubConsumer, err := New(
 		WithLogger(logger),
 		WithStorage(db),
+		WithKafkaBrokers(*brokersList),
+		WithDialTimeout(*dialTimeout),
+		WithReadTimeout(*readTimeout),
+		WithWriteTimeout(*writeTimeout),
+		WithBackoff(*backoff),
+		WithMaxRetries(*maxRetries),
+		WithTopic(*topic),
+		WithPartition(*partition),
 	)
 	if err != nil {
 		return fmt.Errorf("kafkagithubconsumer.Run kafkagithubconsumer.New error: [%w]", err)
@@ -373,15 +485,7 @@ func Run() error {
 
 	defer func() { _ = kafkaGitHubConsumer.SaramaConsumer.Close() }()
 
-	kafkaTopic := kafkacp.KafkaTopicIdentifier(*topic)
-	if !kafkaTopic.Valid() {
-		return fmt.Errorf("kafkagithubconsumer.Run KafkaTopicIdentifier error: %s [%w]", *topic, cerrors.ErrInvalid)
-	}
-
-	fmt.Printf("%T %[1]d\n", *partition)
-
-	kafkaPartition := int32(*partition) //nolint:gosec
-	if err = kafkaGitHubConsumer.Consume(kafkaTopic, kafkaPartition); err != nil {
+	if err = kafkaGitHubConsumer.Consume(); err != nil {
 		return fmt.Errorf("kafkagithubconsumer.Run kafkaGitHubConsumer.Consume error: [%w]", err)
 	}
 

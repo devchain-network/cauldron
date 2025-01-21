@@ -165,6 +165,7 @@ task :pg_running do
   Rake::Task['command_exists'].invoke('pg_isready')
   abort 'DATABASE_NAME is not set' if DATABASE_NAME.nil?
   abort 'DATABASE_URL is not set' if DATABASE_URL.nil?
+  abort 'DATABASE_URL_MIGRATION is not set' if DATABASE_URL_MIGRATION.nil?
   abort 'postgresql is not running' if `$(command -v pg_isready) > /dev/null 2>&1 && echo $?`.chomp.empty?
 end
 
@@ -172,6 +173,15 @@ end
 namespace :db do
   desc 'runs rake db:migrate up (shortcut)'
   task migrate: 'migrate:up'
+
+  desc 'connect local db with psql'
+  task psql: [:pg_running] do
+    abort 'DATABASE_URL is not set' if DATABASE_URL.nil?
+    system %{ PGOPTIONS="--search_path=cauldron" psql #{DATABASE_NAME} }
+    $CHILD_STATUS&.exitstatus || 1
+  rescue Interrupt
+    0
+  end
 
   desc 'reset database (drop and create)'
   task reset: %i[pg_running confirm] do
@@ -187,7 +197,6 @@ namespace :db do
 
   desc 'init database'
   task init: %i[pg_running confirm] do
-    abort 'DATABASE_NAME is not set' if DATABASE_NAME.nil?
     unless `psql -Xqtl | cut -d \\| -f1 | grep -qw #{DATABASE_NAME} > /dev/null 2>&1 && echo $?`.chomp.empty?
       abort "#{DATABASE_NAME} is already exists"
     end
@@ -199,8 +208,7 @@ namespace :db do
 
   namespace :migrate do
     desc 'run migrate up'
-    task up: [:has_go_migrate] do
-      abort 'DATABASE_URL_MIGRATION is not set' if DATABASE_URL_MIGRATION.nil?
+    task up: %i[pg_running has_go_migrate] do
       system %{ migrate -database "#{DATABASE_URL_MIGRATION}" -path "migrations" up }
       $CHILD_STATUS&.exitstatus || 1
     rescue Interrupt
@@ -208,8 +216,7 @@ namespace :db do
     end
 
     desc 'run migrate down'
-    task down: [:has_go_migrate] do
-      abort 'DATABASE_URL_MIGRATION is not set' if DATABASE_URL_MIGRATION.nil?
+    task down: %i[pg_running has_go_migrate] do
       system %{ migrate -database "#{DATABASE_URL_MIGRATION}" -path "migrations" down }
       $CHILD_STATUS&.exitstatus || 1
     rescue Interrupt
@@ -217,7 +224,7 @@ namespace :db do
     end
 
     desc 'go to migration'
-    task :goto, [:index] => %i[has_go_migrate] do |_, args|
+    task :goto, [:index] => %i[pg_running has_go_migrate] do |_, args|
       abort 'DATABASE_URL_MIGRATION is not set' if DATABASE_URL_MIGRATION.nil?
       args.with_defaults(index: 0)
 

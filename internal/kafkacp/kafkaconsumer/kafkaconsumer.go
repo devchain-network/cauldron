@@ -7,7 +7,7 @@ import (
 
 // KafkaConsumer defines kafka consumer behaviours.
 type KafkaConsumer interface {
-	Consume(topic kafkacp.KafkaTopicIdentifier, partition int32) error
+	Consume() error
 }
 
 // GetDefaultConfig returns consumer config with default values.

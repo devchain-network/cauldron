@@ -162,6 +162,7 @@ rake db:migrate                    # runs rake db:migrate up (shortcut)
 rake db:migrate:down               # run migrate down
 rake db:migrate:goto[index]        # go to migration
 rake db:migrate:up                 # run migrate up
+rake db:psql                       # connect local db with psql
 rake db:reset                      # reset database (drop and create)
 rake default                       # default task, runs server
 rake docker:build:github_consumer  # build github consumer
@@ -202,6 +203,7 @@ rake db:migrate              # runs rake db:migrate up (shortcut)
 rake db:migrate:down         # run migrate down
 rake db:migrate:goto[index]  # go to migration
 rake db:migrate:up           # run migrate up
+rake db:psql                 # connect local db with psql
 rake db:reset                # reset database (drop and create)
 ```
 
@@ -222,6 +224,10 @@ back to initial. If you want to go to specific state, use:
 ```bash
 rake db:migrate:goto[3]    # go back to `000003_github.up.sql`
 ```
+
+You can connect your local postgres instance with correct search path with
+using `rake db:psql`
+
 
 You can run each service/component separately with opening multiple terminal
 tabs.

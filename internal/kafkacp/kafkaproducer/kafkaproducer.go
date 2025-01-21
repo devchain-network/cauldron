@@ -10,6 +10,19 @@ import (
 	"github.com/devchain-network/cauldron/internal/kafkacp"
 )
 
+// GetDefaultConfig returns consumer config with default values.
+func GetDefaultConfig() *sarama.Config {
+	config := sarama.NewConfig()
+	config.Net.DialTimeout = kafkacp.DefaultKafkaProducerDialTimeout
+	config.Net.ReadTimeout = kafkacp.DefaultKafkaProducerReadTimeout
+	config.Net.WriteTimeout = kafkacp.DefaultKafkaProducerWriteTimeout
+	config.Producer.RequiredAcks = sarama.WaitForAll
+	config.Producer.Return.Successes = true
+	config.Producer.Return.Errors = true
+
+	return config
+}
+
 // Producer holds required arguments.
 type Producer struct {
 	Logger       *slog.Logger
