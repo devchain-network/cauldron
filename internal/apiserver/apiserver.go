@@ -13,17 +13,17 @@ import (
 	"github.com/vigo/getenv"
 )
 
+// ServerVersion holds servers release version.
+//
 //go:embed VERSION
-var serverVersion string
+var ServerVersion string
 
 // default values.
 const (
-	serverDefaultReadTimeout  = 5 * time.Second
-	serverDefaultWriteTimeout = 10 * time.Second
-	serverDefaultIdleTimeout  = 15 * time.Second
-	serverDefaultListenAddr   = ":8000"
-
-	kpDefaultQueueSize = 100
+	ServerDefaultReadTimeout  = 5 * time.Second
+	ServerDefaultWriteTimeout = 10 * time.Second
+	ServerDefaultIdleTimeout  = 15 * time.Second
+	ServerDefaultListenAddr   = ":8000"
 )
 
 var _ HTTPServer = (*Server)(nil) // compile time proof
@@ -55,7 +55,7 @@ type Server struct {
 
 // Start starts the fast http server.
 func (s *Server) Start() error {
-	s.Logger.Info("start listening at", "addr", s.ListenAddr, "version", serverVersion)
+	s.Logger.Info("start listening at", "addr", s.ListenAddr, "version", ServerVersion)
 	if err := s.FastHTTP.ListenAndServe(s.ListenAddr); err != nil {
 		return fmt.Errorf("apiserver.Start FastHTTP.ListenAndServe error: [%w]", err)
 	}
@@ -220,10 +220,10 @@ func WithKafkaGitHubTopic(s kafkacp.KafkaTopicIdentifier) Option {
 // New instantiates new api server.
 func New(options ...Option) (*Server, error) {
 	server := new(Server)
-	server.ReadTimeout = serverDefaultReadTimeout
-	server.WriteTimeout = serverDefaultWriteTimeout
-	server.IdleTimeout = serverDefaultIdleTimeout
-	server.ListenAddr = serverDefaultListenAddr
+	server.ReadTimeout = ServerDefaultReadTimeout
+	server.WriteTimeout = ServerDefaultWriteTimeout
+	server.IdleTimeout = ServerDefaultIdleTimeout
+	server.ListenAddr = ServerDefaultListenAddr
 
 	for _, option := range options {
 		if err := option(server); err != nil {
