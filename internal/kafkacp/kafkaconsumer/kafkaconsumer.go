@@ -51,15 +51,15 @@ type Consumer struct {
 
 func (c *Consumer) checkRequired() error {
 	if c.Logger == nil {
-		return fmt.Errorf("kafkagithubconsumer.New Logger error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf("kafka consumer check required, Logger error: [%w]", cerrors.ErrValueRequired)
 	}
 
 	if c.Storage == nil {
-		return fmt.Errorf("kafkagithubconsumer.New Storage error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf("kafka consumer check required, Storage error: [%w]", cerrors.ErrValueRequired)
 	}
 
 	if !c.Topic.Valid() {
-		return fmt.Errorf("kafkagithubconsumer.New Topic error: [%w]", cerrors.ErrInvalid)
+		return fmt.Errorf("kafka consumer check required, Topic error: [%w]", cerrors.ErrInvalid)
 	}
 
 	return nil
@@ -69,7 +69,7 @@ func (c *Consumer) checkRequired() error {
 func (c Consumer) Consume() error {
 	partitionConsumer, err := c.SaramaConsumer.ConsumePartition(c.Topic.String(), c.Partition, sarama.OffsetNewest)
 	if err != nil {
-		return fmt.Errorf("kafkagithubconsumer.Consume c.SaramaConsumer.ConsumePartition error: [%w]", err)
+		return fmt.Errorf("kafka consumer partition consumer instantiation error: [%w]", err)
 	}
 	defer func() { _ = partitionConsumer.Close() }()
 
@@ -107,7 +107,7 @@ func (c Consumer) Consume() error {
 
 			for msg := range messagesQueue {
 				if err = c.Storage.MessageStore(ctx, msg); err != nil {
-					c.Logger.Error("kafkaconsumer.Consume c.Storage.MessageStore", "error", err, "worker", i)
+					c.Logger.Error("kafka consumer message store", "error", err, "worker", i)
 
 					continue
 				}
@@ -156,7 +156,7 @@ type Option func(*Consumer) error
 func WithLogger(l *slog.Logger) Option {
 	return func(c *Consumer) error {
 		if l == nil {
-			return fmt.Errorf("kafkagithubconsumer.WithLogger error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("kafka consumer WithLogger error: [%w]", cerrors.ErrValueRequired)
 		}
 		c.Logger = l
 
@@ -168,7 +168,7 @@ func WithLogger(l *slog.Logger) Option {
 func WithStorage(st storage.PingStorer) Option {
 	return func(c *Consumer) error {
 		if st == nil {
-			return fmt.Errorf("kafkagithubconsumer.WithStorage error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("kafka consumer WithStorage error: [%w]", cerrors.ErrValueRequired)
 		}
 		c.Storage = st
 
@@ -181,7 +181,7 @@ func WithTopic(s string) Option {
 	return func(c *Consumer) error {
 		kt := kafkacp.KafkaTopicIdentifier(s)
 		if !kt.Valid() {
-			return fmt.Errorf("kafkagithubconsumer.WithTopic error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf("kafka consumer WithTopic error: [%w]", cerrors.ErrInvalid)
 		}
 		c.Topic = kt
 
@@ -193,7 +193,7 @@ func WithTopic(s string) Option {
 func WithPartition(i int) Option {
 	return func(c *Consumer) error {
 		if i < 0 || i > math.MaxInt32 {
-			return fmt.Errorf("kafkagithubconsumer.WithPartition error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf("kafka consumer WithPartition error: [%w]", cerrors.ErrInvalid)
 		}
 		c.Partition = int32(i)
 
@@ -207,7 +207,7 @@ func WithKafkaBrokers(brokers string) Option {
 		var kafkaBrokers kafkacp.KafkaBrokers
 		kafkaBrokers.AddFromString(brokers)
 		if !kafkaBrokers.Valid() {
-			return fmt.Errorf("kafkagithubconsumer.WithKafkaBrokers error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf("kafka consumer WithKafkaBrokers error: [%w]", cerrors.ErrInvalid)
 		}
 
 		c.KafkaBrokers = kafkaBrokers
@@ -220,7 +220,7 @@ func WithKafkaBrokers(brokers string) Option {
 func WithDialTimeout(d time.Duration) Option {
 	return func(c *Consumer) error {
 		if d < 0 {
-			return fmt.Errorf("kafkagithubconsumer.WithDialTimeout error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf("kafka consumer WithDialTimeout error: [%w]", cerrors.ErrInvalid)
 		}
 		c.DialTimeout = d
 
@@ -232,7 +232,7 @@ func WithDialTimeout(d time.Duration) Option {
 func WithReadTimeout(d time.Duration) Option {
 	return func(c *Consumer) error {
 		if d < 0 {
-			return fmt.Errorf("kafkagithubconsumer.WithReadTimeout error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf("kafka consumer WithReadTimeout error: [%w]", cerrors.ErrInvalid)
 		}
 		c.ReadTimeout = d
 
@@ -244,7 +244,7 @@ func WithReadTimeout(d time.Duration) Option {
 func WithWriteTimeout(d time.Duration) Option {
 	return func(c *Consumer) error {
 		if d < 0 {
-			return fmt.Errorf("kafkagithubconsumer.WithWriteTimeout error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf("kafka consumer WithWriteTimeout error: [%w]", cerrors.ErrInvalid)
 		}
 		c.WriteTimeout = d
 
@@ -256,11 +256,11 @@ func WithWriteTimeout(d time.Duration) Option {
 func WithBackoff(d time.Duration) Option {
 	return func(c *Consumer) error {
 		if d == 0 {
-			return fmt.Errorf("kafkagithubconsumer.WithBackoff error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("kafka consumer WithBackoff error: [%w]", cerrors.ErrValueRequired)
 		}
 
 		if d < 0 || d > time.Minute {
-			return fmt.Errorf("kafkagithubconsumer.WithBackoff error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf("kafka consumer WithBackoff error: [%w]", cerrors.ErrInvalid)
 		}
 
 		c.Backoff = d
@@ -273,7 +273,7 @@ func WithBackoff(d time.Duration) Option {
 func WithMaxRetries(i int) Option {
 	return func(c *Consumer) error {
 		if i > math.MaxUint8 || i < 0 {
-			return fmt.Errorf("kafkagithubconsumer.WithMaxRetries error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf("kafka consumer WithMaxRetries error: [%w]", cerrors.ErrInvalid)
 		}
 		c.MaxRetries = uint8(i)
 
@@ -299,7 +299,7 @@ func New(options ...Option) (*Consumer, error) {
 
 	for _, option := range options {
 		if err := option(consumer); err != nil {
-			return nil, fmt.Errorf("kafkagithubconsumer.New option error: [%w]", err)
+			return nil, fmt.Errorf("kafka consumer option error: [%w]", err)
 		}
 	}
 
@@ -335,7 +335,7 @@ func New(options ...Option) (*Consumer, error) {
 	}
 
 	if sconsumerErr != nil {
-		return nil, fmt.Errorf("kafkagithubconsumer.New error: [%w]", sconsumerErr)
+		return nil, fmt.Errorf("kafka consumer NewConsumer error: [%w]", sconsumerErr)
 	}
 
 	consumer.Logger.Info("successfully connected to", "broker", consumer.KafkaBrokers)

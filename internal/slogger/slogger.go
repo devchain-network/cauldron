@@ -32,7 +32,7 @@ type Option func(*JSONLogger) error
 func WithLogLevel(l slog.Leveler) Option {
 	return func(jl *JSONLogger) error {
 		if l == nil {
-			return fmt.Errorf("slogger.WithLogLevel jl.Level error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("slogger WithLogLevel error: [%w]", cerrors.ErrValueRequired)
 		}
 		jl.Level = l
 
@@ -44,7 +44,7 @@ func WithLogLevel(l slog.Leveler) Option {
 func WithLogLevelName(n string) Option {
 	return func(jl *JSONLogger) error {
 		if n == "" {
-			return fmt.Errorf("slogger.WithLogLevelName error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("slogger WithLogLevelName error: [%w]", cerrors.ErrValueRequired)
 		}
 
 		logLevelMap := map[string]slog.Level{
@@ -60,7 +60,7 @@ func WithLogLevelName(n string) Option {
 			return nil
 		}
 
-		return fmt.Errorf("slogger.WithLogLevelName jl.Level '%s' error: %w", n, cerrors.ErrInvalid)
+		return fmt.Errorf("slogger WithLogLevelName error: '%s' [%w]", n, cerrors.ErrInvalid)
 	}
 }
 
@@ -68,7 +68,7 @@ func WithLogLevelName(n string) Option {
 func WithWriter(w io.Writer) Option {
 	return func(jl *JSONLogger) error {
 		if w == nil {
-			return fmt.Errorf("slogger.WithWriter jl.Writer error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("slogger WithWriter error: [%w]", cerrors.ErrValueRequired)
 		}
 		jl.Writer = w
 
@@ -82,7 +82,7 @@ func New(options ...Option) (*slog.Logger, error) {
 
 	for _, option := range options {
 		if err := option(jlogger); err != nil {
-			return nil, fmt.Errorf("slogger.New option error: [%w]", err)
+			return nil, fmt.Errorf("slogger option error: [%w]", err)
 		}
 	}
 

@@ -22,13 +22,13 @@ func Run() error {
 	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
 	brokersList := getenv.String("KCP_BROKERS", kafkacp.DefaultKafkaBrokers)
 
-	topic := getenv.String("KC_TOPIC_GITHUB", defaultKafkaConsumerTopic)
-	partition := getenv.Int("KC_PARTITION", kafkaconsumer.DefaultPartition)
-	dialTimeout := getenv.Duration("KC_DIAL_TIMEOUT", kafkaconsumer.DefaultDialTimeout)
-	readTimeout := getenv.Duration("KC_READ_TIMEOUT", kafkaconsumer.DefaultReadTimeout)
-	writeTimeout := getenv.Duration("KC_WRITE_TIMEOUT", kafkaconsumer.DefaultWriteTimeout)
-	backoff := getenv.Duration("KC_BACKOFF", kafkaconsumer.DefaultBackoff)
-	maxRetries := getenv.Int("KC_MAX_RETRIES", kafkaconsumer.DefaultMaxRetries)
+	kafkaTopic := getenv.String("KC_TOPIC_GITHUB", defaultKafkaConsumerTopic)
+	kafkaPartition := getenv.Int("KC_PARTITION", kafkaconsumer.DefaultPartition)
+	kafkaDialTimeout := getenv.Duration("KC_DIAL_TIMEOUT", kafkaconsumer.DefaultDialTimeout)
+	kafkaReadTimeout := getenv.Duration("KC_READ_TIMEOUT", kafkaconsumer.DefaultReadTimeout)
+	kafkaWriteTimeout := getenv.Duration("KC_WRITE_TIMEOUT", kafkaconsumer.DefaultWriteTimeout)
+	kafkaBackoff := getenv.Duration("KC_BACKOFF", kafkaconsumer.DefaultBackoff)
+	kafkaMaxRetries := getenv.Int("KC_MAX_RETRIES", kafkaconsumer.DefaultMaxRetries)
 
 	databaseURL := getenv.String("DATABASE_URL", "")
 	if err := getenv.Parse(); err != nil {
@@ -66,13 +66,13 @@ func Run() error {
 		kafkaconsumer.WithLogger(logger),
 		kafkaconsumer.WithStorage(db),
 		kafkaconsumer.WithKafkaBrokers(*brokersList),
-		kafkaconsumer.WithDialTimeout(*dialTimeout),
-		kafkaconsumer.WithReadTimeout(*readTimeout),
-		kafkaconsumer.WithWriteTimeout(*writeTimeout),
-		kafkaconsumer.WithBackoff(*backoff),
-		kafkaconsumer.WithMaxRetries(*maxRetries),
-		kafkaconsumer.WithTopic(*topic),
-		kafkaconsumer.WithPartition(*partition),
+		kafkaconsumer.WithDialTimeout(*kafkaDialTimeout),
+		kafkaconsumer.WithReadTimeout(*kafkaReadTimeout),
+		kafkaconsumer.WithWriteTimeout(*kafkaWriteTimeout),
+		kafkaconsumer.WithBackoff(*kafkaBackoff),
+		kafkaconsumer.WithMaxRetries(*kafkaMaxRetries),
+		kafkaconsumer.WithTopic(*kafkaTopic),
+		kafkaconsumer.WithPartition(*kafkaPartition),
 	)
 	if err != nil {
 		return fmt.Errorf("github kafka consumer instantiate error: [%w]", err)

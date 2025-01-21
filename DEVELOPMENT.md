@@ -47,29 +47,67 @@ bundle
 
 ## Environment Variables
 
+### API Server / Kafka Producer
+
 | Variable | Description | Default |
 |:---------|:------------|---------|
-| `LISTEN_ADDR` | Server listen address | `":8000"` |
 | `LOG_LEVEL` | Logging level, Valid values are: `"DEBUG"`, `"INFO"`, `"WARN"`, `"ERROR"` | `"INFO"` |
-| `GITHUB_HMAC_SECRET` | HMAC secret value for GitHub’s webhooks. | `""` |
+| `LISTEN_ADDR` | Server listen address | `":8000"` |
+| `SERVER_READ_TIMEOUT` | Fast HTTP default read timeout (seconds) | `5s` |
+| `SERVER_WRITE_TIMEOUT` | Fast HTTP default read timeout (seconds) | `10s` |
+| `SERVER_IDLE_TIMEOUT` | Fast HTTP default read timeout (seconds) | `15s` |
 | `KCP_BROKERS` | Kafka consumer/producer brokers list, comma separated | `"127.0.0.1:9094"` |
+| `KP_DIAL_TIMEOUT` | Initial connection timeout used by broker (shared with producer) | "`30s`" (seconds) |
+| `KP_READ_TIMEOUT` | Response timeout used by broker (shared with producer) | "`30s`" (seconds) |
+| `KP_WRITE_TIMEOUT` | Transmit timeout used by broker (shared with producer) | "`30s`" (seconds) |
+| `KP_BACKOFF` | Backoff value for retries (producer) | "`2s`" (seconds) |
+| `KP_MAX_RETRIES` | Maximum retry (producer) | `10` |
+| `GITHUB_HMAC_SECRET` | HMAC secret value for GitHub’s webhooks. | `""` |
 | `KP_GITHUB_MESSAGE_QUEUE_SIZE` | Size of default Kafka message producer queue size for GitHub Webhooks | `100` |
+
+### Kafka Consumer
+
+| Variable | Description | Default |
+|:---------|:------------|---------|
+| `LOG_LEVEL` | Logging level, Valid values are: `"DEBUG"`, `"INFO"`, `"WARN"`, `"ERROR"` | `"INFO"` |
+| `KCP_BROKERS` | Kafka consumer/producer brokers list, comma separated | `"127.0.0.1:9094"` |
+| `KC_TOPIC_GITHUB` | Topic name for GitHub webhook consumer | `github` |
 | `KC_PARTITION` | Consumer partition number | `0` |
-| `KC_TOPIC` | Topic to subscribe | `""` |
-| `KC_DIAL_TIMEOUT` | Initial connection timeout used by broker | "`30s`" (seconds) |
-| `KC_READ_TIMEOUT` | Response timeout used by broker | "`30s`" (seconds) |
-| `KC_WRITE_TIMEOUT` | Transmit timeout used by broker | "`30s`" (seconds) |
-| `KC_BACKOFF` | Backoff value for retries | "`2s`" (seconds) |
-| `KC_MAX_RETRIES` | Maximum retry | `10` |
-| `DATABASE_NAME` | Name of your PostgreSQL database | `""` |
+| `KC_DIAL_TIMEOUT` | Initial connection timeout used by broker (shared with consumer) | "`30s`" (seconds) |
+| `KC_READ_TIMEOUT` | Response timeout used by broker (shared with consumer) | "`30s`" (seconds) |
+| `KC_WRITE_TIMEOUT` | Transmit timeout used by broker (shared with consumer) | "`30s`" (seconds) |
+| `KC_BACKOFF` | Backoff value for retries (consumer) | "`2s`" (seconds) |
+| `KC_MAX_RETRIES` | Maximum retry (consumer) | `10` |
 | `DATABASE_URL` | PostgreSQL dsn | `""` |
+
+### Migrator
+
+| Variable | Description | Default |
+|:---------|:------------|---------|
+| `DATABASE_URL_MIGRATION` | PostgreSQL dsn used for migrator command, uses `public` PostgreSQL schema | `""` |
+
+### Docker Compose
+
+| Variable | Description | Default |
+|:---------|:------------|---------|
 | `POSTGRES_DB`: PostgreSQL database name for docker-compose | `""` |
 | `POSTGRES_PASSWORD`: PostgreSQL password for docker-compose | `""` |
 | `DATABASE_URL_DOCKER_TO_HOST`: For testing migrator to connect you local pg | `""` |
-| `DATABASE_URL_INFRA`: For postgresql dsn for infra | `""` |
+| `DATABASE_URL_INFRA`: Postgresql dsn for infra | `""` |
+| `DATABASE_URL_INFRA_MIGRATION`: Postgresql dsn for infra (migrator) | `""` |
 | `NGROK_AUTHTOKEN`: your ngrok auth token | `""` |
 | `NGROK_PUBLIC_URL`: your ngrok public url | `""` |
 | `NGROK_FORWARD`: your service tcp addr for ngrok | `""` |
+
+### Used in Rake Tasks (optional)
+
+| Variable | Description | Default |
+|:---------|:------------|---------|
+| `DATABASE_NAME` | Name of your PostgreSQL database | `""` |
+
+---
+
+## Setup
 
 Grab your `ngrok` auth token via:
 
@@ -85,15 +123,20 @@ agent:
     authtoken: <your-ngrok-token>
 ```
 
+Migration information is stored in `public` PostgreSQL schema, application database
+is stored in `cauldron` PostgreSQL schema.
+
 Example `.envrc`:
 
 ```bash
 # for ruby/rake only
 export PATH="bin:${PATH}"
 
-# cauldron server
-export LISTEN_ADDR=":8000"
+# shared with api server, kafka consumer, producer
 export LOG_LEVEL="INFO"
+
+# cauldron server (api server)
+export LISTEN_ADDR=":8000"
 export GITHUB_HMAC_SECRET="<secret>"
 
 # kafka consumer/producer shared values.
@@ -102,25 +145,35 @@ export KCP_BROKERS="127.0.0.1:9094"
 # kafka producer values.
 export KP_GITHUB_MESSAGE_QUEUE_SIZE=100
 
-# kafka github consumer values.
-export KC_PARTITION="0"
-export KC_DIAL_TIMEOUT="30s"
-export KC_READ_TIMEOUT="30s"
-export KC_WRITE_TIMEOUT="30s"
-export KC_BACKOFF="2s"
-export KC_MAX_RETRIES="10"
+# kafka producer optional values.
+# export KP_DIAL_TIMEOUT="30s"
+# export KP_READ_TIMEOUT="30s"
+# export KP_WRITE_TIMEOUT="30s"
+# export KP_BACKOFF="2s"
+# export KP_MAX_RETRIES="10"
+
+# kafka github consumer optional values.
+# export KC_TOPIC_GITHUB="github"
+# export KC_PARTITION="0"
+# export KC_DIAL_TIMEOUT="30s"
+# export KC_READ_TIMEOUT="30s"
+# export KC_WRITE_TIMEOUT="30s"
+# export KC_BACKOFF="2s"
+# export KC_MAX_RETRIES="10"
 
 # database variables, works for local postgresql
 export DATABASE_NAME="devchain_webhook"
-export DATABASE_URL="postgres://localhost:5432/${DATABASE_NAME}?sslmode=disable&timezone=UTC"
+export DATABASE_URL="postgresql://localhost:5432/${DATABASE_NAME}?sslmode=disable&search_path=cauldron"
 
 # postgresql runs on infra/docker
 export POSTGRES_DB="${DATABASE_NAME}"
-export POSTGRES_PASSWORD="gee2Jiquush4eiso"
-export DATABASE_URL_INFRA="postgres://postgres:${POSTGRES_PASSWORD}@postgresql_db:5432/${POSTGRES_DB}?sslmode=disable&timezone=UTC"
+export POSTGRES_PASSWORD="set-a-secure-pass-here"
+
+export DATABASE_URL_INFRA="postgres://postgres:${POSTGRES_PASSWORD}@postgresql_db:5432/${POSTGRES_DB}?sslmode=disable&search_path=cauldron"
+export DATABASE_URL_INFRA_MIGRATION="postgres://postgres:${POSTGRES_PASSWORD}@postgresql_db:5432/${POSTGRES_DB}?sslmode=disable&search_path=public"
 
 # used for testing migrator, assuming postgresql is installed from brew.
-export DATABASE_URL_DOCKER_TO_HOST="postgres://${USER}@host.docker.internal:5432/${DATABASE_NAME}?sslmode=disable&timezone=UTC"
+export DATABASE_URL_DOCKER_TO_HOST="postgres://${USER}@host.docker.internal:5432/${DATABASE_NAME}?sslmode=disable&search_path=cauldron"
 
 # for ngrok
 export NGROK_AUTHTOKEN="<your-ngrok-token>"

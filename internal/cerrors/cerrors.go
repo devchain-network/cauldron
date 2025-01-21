@@ -4,6 +4,6 @@ import "errors"
 
 // sentinel errors.
 var (
-	ErrValueRequired = errors.New("required")
-	ErrInvalid       = errors.New("invalid")
+	ErrValueRequired = errors.New("value required")
+	ErrInvalid       = errors.New("value is invalid")
 )

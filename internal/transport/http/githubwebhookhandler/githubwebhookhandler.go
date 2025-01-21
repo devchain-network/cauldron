@@ -151,16 +151,16 @@ func (h Handler) Handle(ctx *fasthttp.RequestCtx) {
 
 func (h Handler) checkRequired() error {
 	if h.Logger == nil {
-		return fmt.Errorf("githubwebhookhandler.New Logger error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf("github webhook handler check required, Logger error: [%w]", cerrors.ErrValueRequired)
 	}
 	if !h.Topic.Valid() {
-		return fmt.Errorf("githubwebhookhandler.New Topic error: [%w]", cerrors.ErrInvalid)
+		return fmt.Errorf("github webhook handler check required, Topic error: [%w]", cerrors.ErrInvalid)
 	}
 	if h.Secret == "" {
-		return fmt.Errorf("githubwebhookhandler.New Secret error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf("github webhook handler check required, Secret error: [%w]", cerrors.ErrValueRequired)
 	}
 	if h.MessageQueue == nil {
-		return fmt.Errorf("githubwebhookhandler.New MessageQueue error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf("github webhook handler check required, MessageQueue error: [%w]", cerrors.ErrValueRequired)
 	}
 
 	return nil
@@ -173,7 +173,7 @@ type Option func(*Handler) error
 func WithLogger(l *slog.Logger) Option {
 	return func(h *Handler) error {
 		if l == nil {
-			return fmt.Errorf("githubwebhookhandler.WithLogger error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("github webhook handler WithLogger error: [%w]", cerrors.ErrValueRequired)
 		}
 		h.Logger = l
 
@@ -185,7 +185,7 @@ func WithLogger(l *slog.Logger) Option {
 func WithTopic(s kafkacp.KafkaTopicIdentifier) Option {
 	return func(h *Handler) error {
 		if !s.Valid() {
-			return fmt.Errorf("githubwebhookhandler.WithTopic h.Topic error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf("github webhook handler WithTopic h.Topic error: [%w]", cerrors.ErrInvalid)
 		}
 		h.Topic = s
 
@@ -197,7 +197,7 @@ func WithTopic(s kafkacp.KafkaTopicIdentifier) Option {
 func WithWebhookSecret(s string) Option {
 	return func(h *Handler) error {
 		if s == "" {
-			return fmt.Errorf("githubwebhookhandler.WithWebhookSecret h.Secret error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("github webhook handler WithWebhookSecret h.Secret error: [%w]", cerrors.ErrValueRequired)
 		}
 
 		h.Secret = s
@@ -211,7 +211,7 @@ func WithProducerGitHubMessageQueue(mq chan *sarama.ProducerMessage) Option {
 	return func(h *Handler) error {
 		if mq == nil {
 			return fmt.Errorf(
-				"githubwebhookhandler.WithProducerGitHubMessageQueue error: [%w]",
+				"github webhook handler WithProducerGitHubMessageQueue error: [%w]",
 				cerrors.ErrValueRequired,
 			)
 		}
@@ -227,7 +227,7 @@ func New(options ...Option) (*Handler, error) {
 
 	for _, option := range options {
 		if err := option(handler); err != nil {
-			return nil, fmt.Errorf("githubwebhookhandler.New option error: [%w]", err)
+			return nil, fmt.Errorf("github webhook handler option error: [%w]", err)
 		}
 	}
 

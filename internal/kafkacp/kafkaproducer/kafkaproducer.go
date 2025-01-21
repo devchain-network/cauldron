@@ -3,6 +3,7 @@ package kafkaproducer
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"time"
 
 	"github.com/IBM/sarama"
@@ -32,10 +33,10 @@ type Producer struct {
 
 func (p Producer) checkRequired() error {
 	if p.Logger == nil {
-		return fmt.Errorf("kafkaproducer.New Logger error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf("kafka producer check required, Logger error: [%w]", cerrors.ErrValueRequired)
 	}
 	if !p.KafkaBrokers.Valid() {
-		return fmt.Errorf("kafkaproducer.New KafkaBrokers error: [%w]", cerrors.ErrInvalid)
+		return fmt.Errorf("kafka producer check required, KafkaBrokers error: [%w]", cerrors.ErrInvalid)
 	}
 
 	return nil
@@ -48,7 +49,7 @@ type Option func(*Producer) error
 func WithLogger(l *slog.Logger) Option {
 	return func(p *Producer) error {
 		if l == nil {
-			return fmt.Errorf("kafkaproducer.WithLogger error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("kafka producer WithLogger error: [%w]", cerrors.ErrValueRequired)
 		}
 		p.Logger = l
 
@@ -60,7 +61,7 @@ func WithLogger(l *slog.Logger) Option {
 func WithKafkaBrokers(brokers kafkacp.KafkaBrokers) Option {
 	return func(p *Producer) error {
 		if !brokers.Valid() {
-			return fmt.Errorf("kafkaproducer.WithKafkaBrokers error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf("kafka producer WithKafkaBrokers error: [%w]", cerrors.ErrInvalid)
 		}
 
 		p.KafkaBrokers = brokers
@@ -72,8 +73,8 @@ func WithKafkaBrokers(brokers kafkacp.KafkaBrokers) Option {
 // WithMaxRetries sets max retries value.
 func WithMaxRetries(i int) Option {
 	return func(p *Producer) error {
-		if i > 255 || i < 0 {
-			return fmt.Errorf("kafkaproducer.WithMaxRetries error: [%w]", cerrors.ErrInvalid)
+		if i > math.MaxUint8 || i < 0 {
+			return fmt.Errorf("kafka producer WithMaxRetries error: [%w]", cerrors.ErrInvalid)
 		}
 		p.MaxRetries = uint8(i)
 
@@ -85,7 +86,7 @@ func WithMaxRetries(i int) Option {
 func WithBackoff(d time.Duration) Option {
 	return func(p *Producer) error {
 		if d == 0 {
-			return fmt.Errorf("kafkaproducer.WithBackoff error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("kafka producer WithBackoff error: [%w]", cerrors.ErrValueRequired)
 		}
 		p.Backoff = d
 
@@ -97,7 +98,7 @@ func WithBackoff(d time.Duration) Option {
 func WithDialTimeout(d time.Duration) Option {
 	return func(p *Producer) error {
 		if d < 0 {
-			return fmt.Errorf("kafkaproducer.WithDialTimeout error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf("kafka producer WithDialTimeout error: [%w]", cerrors.ErrInvalid)
 		}
 		p.DialTimeout = d
 
@@ -109,7 +110,7 @@ func WithDialTimeout(d time.Duration) Option {
 func WithReadTimeout(d time.Duration) Option {
 	return func(p *Producer) error {
 		if d < 0 {
-			return fmt.Errorf("kafkaproducer.WithReadTimeout error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf("kafka producer WithReadTimeout error: [%w]", cerrors.ErrInvalid)
 		}
 		p.ReadTimeout = d
 
@@ -121,7 +122,7 @@ func WithReadTimeout(d time.Duration) Option {
 func WithWriteTimeout(d time.Duration) Option {
 	return func(p *Producer) error {
 		if d < 0 {
-			return fmt.Errorf("kafkaproducer.WithWriteTimeout error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf("kafka producer WithWriteTimeout error: [%w]", cerrors.ErrInvalid)
 		}
 		p.WriteTimeout = d
 
@@ -140,7 +141,7 @@ func New(options ...Option) (sarama.AsyncProducer, error) {
 
 	for _, option := range options {
 		if err := option(producer); err != nil {
-			return nil, fmt.Errorf("kafkaproducer.New option error: [%w]", err)
+			return nil, fmt.Errorf("kafka producer option error: [%w]", err)
 		}
 	}
 
@@ -176,7 +177,7 @@ func New(options ...Option) (sarama.AsyncProducer, error) {
 		backoff *= 2
 	}
 	if kafkaProducerErr != nil {
-		return nil, fmt.Errorf("kafkaproducer.New sarama.NewAsyncProducer error: [%w]", kafkaProducerErr)
+		return nil, fmt.Errorf("kafka producer sarama.NewAsyncProducer error: [%w]", kafkaProducerErr)
 	}
 
 	return kafkaProducer, nil

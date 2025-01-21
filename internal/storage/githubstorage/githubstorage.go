@@ -172,11 +172,11 @@ func (s GitHubStorage) MessageStore(ctx context.Context, message *sarama.Consume
 
 func (s GitHubStorage) checkRequired() error {
 	if s.Logger == nil {
-		return fmt.Errorf("githubstorage.New Logger error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf("githubstorage check required, Logger error: [%w]", cerrors.ErrValueRequired)
 	}
 
 	if s.DatabaseDSN == "" {
-		return fmt.Errorf("githubstorage.New DatabaseDSN error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf("githubstorage check required, DatabaseDSN error: [%w]", cerrors.ErrValueRequired)
 	}
 
 	return nil
@@ -189,7 +189,7 @@ type Option func(*GitHubStorage) error
 func WithLogger(l *slog.Logger) Option {
 	return func(s *GitHubStorage) error {
 		if l == nil {
-			return fmt.Errorf("githubstorage.WithLogger error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("githubstorage WithLogger error: [%w]", cerrors.ErrValueRequired)
 		}
 		s.Logger = l
 
@@ -201,7 +201,7 @@ func WithLogger(l *slog.Logger) Option {
 func WithDatabaseDSN(dsn string) Option {
 	return func(s *GitHubStorage) error {
 		if dsn == "" {
-			return fmt.Errorf("githubstorage.WithDatabaseDSN error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf("githubstorage WithDatabaseDSN error: [%w]", cerrors.ErrValueRequired)
 		}
 		s.DatabaseDSN = dsn
 
@@ -215,7 +215,7 @@ func New(ctx context.Context, options ...Option) (*GitHubStorage, error) {
 
 	for _, option := range options {
 		if err := option(githubStorage); err != nil {
-			return nil, fmt.Errorf("githubstorage.New option error: [%w]", err)
+			return nil, fmt.Errorf("githubstorage option error: [%w]", err)
 		}
 	}
 
@@ -225,12 +225,12 @@ func New(ctx context.Context, options ...Option) (*GitHubStorage, error) {
 
 	config, err := pgxpool.ParseConfig(githubStorage.DatabaseDSN)
 	if err != nil {
-		return nil, fmt.Errorf("githubstorage.New pgxpool.ParseConfig error: [%w]", err)
+		return nil, fmt.Errorf("githubstorage pgxpool.ParseConfig error: [%w]", err)
 	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
-		return nil, fmt.Errorf("githubstorage.New pgxpool.NewWithConfig error: [%w]", err)
+		return nil, fmt.Errorf("githubstorage pgxpool.NewWithConfig error: [%w]", err)
 	}
 
 	githubStorage.Pool = pool
