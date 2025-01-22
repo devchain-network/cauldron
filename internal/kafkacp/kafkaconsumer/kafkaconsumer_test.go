@@ -299,8 +299,7 @@ func TestNew_WithSaramaConsumerFactoryFunc_Success(t *testing.T) {
 	mockSarama := mocks.NewConsumer(t, mockConfig)
 
 	mockFactory := &mockConsumerFactory{}
-	mockFactory.On("NewConsumer", mock.Anything, mock.Anything).Return(mockSarama, sarama.ErrOutOfBrokers).Once()
-	mockFactory.On("NewConsumer", mock.Anything, mock.Anything).Return(mockSarama, sarama.ErrOutOfBrokers).Once()
+	mockFactory.On("NewConsumer", mock.Anything, mock.Anything).Return(mockSarama, sarama.ErrOutOfBrokers).Twice()
 	mockFactory.On("NewConsumer", mock.Anything, mock.Anything).Return(mockSarama, nil).Once()
 
 	consumer, err := kafkaconsumer.New(
