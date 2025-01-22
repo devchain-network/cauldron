@@ -32,21 +32,25 @@ type KafkaConsumer interface {
 	Consume() error
 }
 
+// SaramaConsumerFactoryFunc is a factory function.
+type SaramaConsumerFactoryFunc func([]string, *sarama.Config) (sarama.Consumer, error)
+
 // Consumer represents kafa consumer setup.
 type Consumer struct {
-	Topic             kafkacp.KafkaTopicIdentifier
-	Logger            *slog.Logger
-	Storage           storage.PingStorer
-	SaramaConsumer    sarama.Consumer
-	KafkaBrokers      kafkacp.KafkaBrokers
-	DialTimeout       time.Duration
-	ReadTimeout       time.Duration
-	WriteTimeout      time.Duration
-	Backoff           time.Duration
-	MaxRetries        uint8
-	Partition         int32
-	MessageBufferSize int
-	NumberOfWorkers   int
+	Topic                     kafkacp.KafkaTopicIdentifier
+	Logger                    *slog.Logger
+	Storage                   storage.PingStorer
+	SaramaConsumer            sarama.Consumer
+	SaramaConsumerFactoryFunc SaramaConsumerFactoryFunc
+	KafkaBrokers              kafkacp.KafkaBrokers
+	DialTimeout               time.Duration
+	ReadTimeout               time.Duration
+	WriteTimeout              time.Duration
+	Backoff                   time.Duration
+	MaxRetries                uint8
+	Partition                 int32
+	MessageBufferSize         int
+	NumberOfWorkers           int
 }
 
 func (c *Consumer) checkRequired() error {
@@ -281,6 +285,18 @@ func WithMaxRetries(i int) Option {
 	}
 }
 
+// WithSaramaConsumerFactoryFunc sets a custom factory function for creating Sarama consumers.
+func WithSaramaConsumerFactoryFunc(factory SaramaConsumerFactoryFunc) Option {
+	return func(c *Consumer) error {
+		if factory == nil {
+			return fmt.Errorf("kafka consumer WithSaramaConsumerFactoryFunc error: [%w]", cerrors.ErrValueRequired)
+		}
+		c.SaramaConsumerFactoryFunc = factory
+
+		return nil
+	}
+}
+
 // New instantiates new kafka github consumer instance.
 func New(options ...Option) (*Consumer, error) {
 	consumer := new(Consumer)
@@ -296,6 +312,7 @@ func New(options ...Option) (*Consumer, error) {
 	consumer.MaxRetries = DefaultMaxRetries
 	consumer.NumberOfWorkers = runtime.NumCPU()
 	consumer.MessageBufferSize = consumer.NumberOfWorkers * 10
+	consumer.SaramaConsumerFactoryFunc = sarama.NewConsumer
 
 	for _, option := range options {
 		if err := option(consumer); err != nil {
@@ -318,7 +335,7 @@ func New(options ...Option) (*Consumer, error) {
 	backoff := consumer.Backoff
 
 	for i := range consumer.MaxRetries {
-		sconsumer, sconsumerErr = sarama.NewConsumer(consumer.KafkaBrokers.ToStringSlice(), config)
+		sconsumer, sconsumerErr = consumer.SaramaConsumerFactoryFunc(consumer.KafkaBrokers.ToStringSlice(), config)
 		if sconsumerErr == nil {
 			break
 		}
