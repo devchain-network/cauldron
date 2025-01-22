@@ -8,7 +8,7 @@ CREATE TABLE "cauldron"."github_user" (
     "id" SERIAL PRIMARY KEY,
     "uid" UUID DEFAULT uuid_generate_v4(),
     "created_at" TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'UTC'),
-    "app_user_id" BIGINT REFERENCES "cauldron"."app_user"(id) ON DELETE CASCADE,
+    "app_user_id" BIGINT REFERENCES "cauldron"."app_user"(id) ON DELETE NO ACTION,
     "user_login" VARCHAR(40) NOT NULL,
     "user_id" BIGINT NOT NULL,
     "avatar_url" VARCHAR(255),
