@@ -136,7 +136,7 @@ func (s GitHubStorage) Ping(ctx context.Context, maxRetries uint8, backoff time.
 	}
 
 	if pingErr != nil {
-		return fmt.Errorf("storage.GitHubStorage.Ping error: [%w]", pingErr)
+		return fmt.Errorf("githubstorage Ping error: [%w]", pingErr)
 	}
 
 	return nil
