@@ -177,3 +177,137 @@ func TestNew_InvalidKafkaTopic_check(t *testing.T) {
 	assert.ErrorIs(t, err, cerrors.ErrInvalid)
 	assert.Nil(t, server)
 }
+
+func TestNew_MissingArgsHTTPHandler_method(t *testing.T) {
+	logger := slog.New(new(mockLogger))
+
+	server, err := apiserver.New(
+		apiserver.WithLogger(logger),
+		apiserver.WithListenAddr(":9000"),
+		apiserver.WithReadTimeout(5*time.Second),
+		apiserver.WithWriteTimeout(5*time.Second),
+		apiserver.WithIdleTimeout(5*time.Second),
+		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub),
+		apiserver.WithHTTPHandler(
+			"",
+			"/test",
+			func(ctx *fasthttp.RequestCtx) { ctx.SetStatusCode(fasthttp.StatusOK) },
+		),
+	)
+
+	assert.ErrorIs(t, err, cerrors.ErrValueRequired)
+	assert.Nil(t, server)
+}
+
+func TestNew_MissingArgsHTTPHandler_path(t *testing.T) {
+	logger := slog.New(new(mockLogger))
+
+	server, err := apiserver.New(
+		apiserver.WithLogger(logger),
+		apiserver.WithListenAddr(":9000"),
+		apiserver.WithReadTimeout(5*time.Second),
+		apiserver.WithWriteTimeout(5*time.Second),
+		apiserver.WithIdleTimeout(5*time.Second),
+		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub),
+		apiserver.WithHTTPHandler(
+			fasthttp.MethodGet,
+			"",
+			func(ctx *fasthttp.RequestCtx) { ctx.SetStatusCode(fasthttp.StatusOK) },
+		),
+	)
+
+	assert.ErrorIs(t, err, cerrors.ErrValueRequired)
+	assert.Nil(t, server)
+}
+
+func TestNew_MissingArgsHTTPHandler_handler(t *testing.T) {
+	logger := slog.New(new(mockLogger))
+
+	server, err := apiserver.New(
+		apiserver.WithLogger(logger),
+		apiserver.WithListenAddr(":9000"),
+		apiserver.WithReadTimeout(5*time.Second),
+		apiserver.WithWriteTimeout(5*time.Second),
+		apiserver.WithIdleTimeout(5*time.Second),
+		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub),
+		apiserver.WithHTTPHandler(
+			fasthttp.MethodGet,
+			"/test",
+			nil,
+		),
+	)
+
+	assert.ErrorIs(t, err, cerrors.ErrValueRequired)
+	assert.Nil(t, server)
+}
+
+func TestHttpRouter_NotFound(t *testing.T) {
+	logger := slog.New(new(mockLogger))
+
+	server, err := apiserver.New(
+		apiserver.WithLogger(logger),
+		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub),
+		apiserver.WithHTTPHandler(
+			fasthttp.MethodGet,
+			"/existing-path",
+			func(ctx *fasthttp.RequestCtx) { ctx.SetStatusCode(fasthttp.StatusOK) },
+		),
+	)
+	assert.NoError(t, err)
+
+	ctx := &fasthttp.RequestCtx{}
+	ctx.Request.SetRequestURI("/non-existent-path")
+	ctx.Request.Header.SetMethod(fasthttp.MethodGet)
+
+	server.FastHTTP.Handler(ctx)
+
+	assert.Equal(t, fasthttp.StatusNotFound, ctx.Response.StatusCode())
+}
+
+func TestHttpRouter_MethodNotAllowed(t *testing.T) {
+	logger := slog.New(new(mockLogger))
+	server, err := apiserver.New(
+		apiserver.WithLogger(logger),
+		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub),
+		apiserver.WithHTTPHandler(
+			fasthttp.MethodGet,
+			"/existing-path",
+			func(ctx *fasthttp.RequestCtx) { ctx.SetStatusCode(fasthttp.StatusOK) },
+		),
+	)
+	assert.NoError(t, err)
+
+	ctx := &fasthttp.RequestCtx{}
+	ctx.Request.SetRequestURI("/existing-path")
+	ctx.Request.Header.SetMethod(fasthttp.MethodPost)
+
+	server.FastHTTP.Handler(ctx)
+
+	assert.Equal(t, fasthttp.StatusMethodNotAllowed, ctx.Response.StatusCode())
+}
+
+func TestHttpRouter_ValidRouteAndMethod(t *testing.T) {
+	logger := slog.New(new(mockLogger))
+	server, err := apiserver.New(
+		apiserver.WithLogger(logger),
+		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub),
+		apiserver.WithHTTPHandler(
+			fasthttp.MethodGet,
+			"/existing-path",
+			func(ctx *fasthttp.RequestCtx) {
+				ctx.SetStatusCode(fasthttp.StatusOK)
+				ctx.SetBody([]byte("success"))
+			},
+		),
+	)
+	assert.NoError(t, err)
+
+	ctx := &fasthttp.RequestCtx{}
+	ctx.Request.SetRequestURI("/existing-path")
+	ctx.Request.Header.SetMethod(fasthttp.MethodGet)
+
+	server.FastHTTP.Handler(ctx)
+
+	assert.Equal(t, fasthttp.StatusOK, ctx.Response.StatusCode())
+	assert.Equal(t, "success", string(ctx.Response.Body()))
+}
