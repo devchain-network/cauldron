@@ -13,11 +13,13 @@ A dynamic hub where incoming webhooks brew, process, and transform seamlessly.
 
 More information will be provided soon.
 
+You are very welcome to contribute! Click [here][01] to see notes related to development.
+
 ---
 
 ## License
 
-This project is licensed under MIT
+This project is licensed under MIT.
 
 ---
 
@@ -25,3 +27,4 @@ This project is intended to be a safe, welcoming space for collaboration, and
 contributors are expected to adhere to the [code of conduct][coc].
 
 [coc]: https://github.com/devchain-network/cauldron/blob/main/CODE_OF_CONDUCT.md
+[01]: https://github.com/devchain-network/cauldron/blob/main/DEVELOPMENT.md

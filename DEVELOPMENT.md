@@ -86,7 +86,23 @@ bundle
 |:---------|:------------|---------|
 | `DATABASE_URL_MIGRATION` | PostgreSQL dsn used for migrator command, uses `public` PostgreSQL schema | `""` |
 
-### Docker Compose
+### Docker Compose (infra)
+
+Grab your `ngrok` auth token via:
+
+```bash
+ngrok config edit
+```
+
+You’ll see a `yaml` file:
+
+```yaml
+version: "3"
+agent:
+    authtoken: <your-ngrok-token>
+```
+
+Set your `NGROK_AUTHTOKEN` with that value.
 
 | Variable | Description | Default |
 |:---------|:------------|---------|
@@ -108,20 +124,6 @@ bundle
 ---
 
 ## Setup
-
-Grab your `ngrok` auth token via:
-
-```bash
-ngrok config edit
-```
-
-You’ll see a `yaml` file:
-
-```yaml
-version: "3"
-agent:
-    authtoken: <your-ngrok-token>
-```
 
 Migration information is stored in `public` PostgreSQL schema, application database
 is stored in `cauldron` PostgreSQL schema.
@@ -281,18 +283,35 @@ rake db:migrate:goto[3]    # go back to `000003_github.up.sql`
 You can connect your local postgres instance with correct search path with
 using `rake db:psql`
 
+If you want to add new tables or make change, use:
+
+```bash
+migrate create -ext sql -dir "migrations" -seq <name>
+```
+
+Appy:
+
+```bash
+migrate -database "#{DATABASE_URL_MIGRATION}" -path "migrations" up
+```
+
+You can also use:
+
+```bash
+rake db:migrate
+```
 
 You can run each service/component separately with opening multiple terminal
 tabs.
 
 ```bash
-rake docker:compose:kafka:up                     # kick kafka + kafka ui in tab 1
+rake docker:compose:kafka:up                     # kicks kafka + kafka ui in tab 1
 docker compose -f docker-compose.kafka.yml up    # or use this w/o rake.
 
-rake                                # kick webhook server in tab 2.
+rake                                # kicks webhook server in tab 2.
 go run cmd/server/main.go           # or use this w/o rake.
 
-rake run:kafka:github:consumer      # kick github consumer in tab 3
+rake run:kafka:github:consumer      # kicks github consumer in tab 3
 go run cmd/githubconsumer/main.go   # or use this w/o rake.
 
 ngrok http --url=<url-url>.ngrok-free.app 8000 # run ngrok in tab 4
@@ -316,6 +335,8 @@ rake run:server                  # run server
 ### Linter Tasks
 
 ```bash
+rake -T "lint|rubo"
+
 rake lint              # runs golang-ci linter
 rake rubocop:lint      # lints ruby code
 rake rubocop:autofix   # lints ruby code and auto fixes.
@@ -394,14 +415,6 @@ Logging for **kafka** and **kafka-ui** is set to `error` only. Due to developmen
 purposes, both were producing too much information, little clean up required.
 
 ---
-
-## Database Migrations
-
-Add new migration:
-
-```bash
-migrate create -ext sql -dir migrations -seq <name>
-```
 
 [001]: https://brew.sh/
 [002]: https://orbstack.dev/

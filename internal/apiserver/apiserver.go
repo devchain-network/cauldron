@@ -84,20 +84,6 @@ func (s Server) checkRequired() error {
 		return fmt.Errorf("api server check required, Handlers error: [%w]", cerrors.ErrValueRequired)
 	}
 
-	if s.KafkaBrokers == nil {
-		return fmt.Errorf("api server check required, KafkaBrokers error: [%w]", cerrors.ErrValueRequired)
-	}
-
-	if s.ListenAddr == "" {
-		return fmt.Errorf("api server check required, ListenAddr error: [%w]", cerrors.ErrValueRequired)
-	}
-
-	if _, err := getenv.ValidateTCPNetworkAddress(s.ListenAddr); err != nil {
-		return fmt.Errorf(
-			"api server check required, ListenAddr error: [%w] [%w]", err, cerrors.ErrInvalid,
-		)
-	}
-
 	if !s.KafkaGitHubTopic.Valid() {
 		return fmt.Errorf("api server check required, KafkaGitHubTopic error: [%w]", cerrors.ErrInvalid)
 	}
@@ -221,6 +207,10 @@ func WithKafkaGitHubTopic(s kafkacp.KafkaTopicIdentifier) Option {
 // New instantiates new api server.
 func New(options ...Option) (*Server, error) {
 	server := new(Server)
+	var kafkaBrokers kafkacp.KafkaBrokers
+	kafkaBrokers.AddFromString(kafkacp.DefaultKafkaBrokers)
+
+	server.KafkaBrokers = kafkaBrokers
 	server.ReadTimeout = ServerDefaultReadTimeout
 	server.WriteTimeout = ServerDefaultWriteTimeout
 	server.IdleTimeout = ServerDefaultIdleTimeout
