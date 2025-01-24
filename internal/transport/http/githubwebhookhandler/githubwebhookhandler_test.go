@@ -512,6 +512,47 @@ func TestHandle_NoSenderID(t *testing.T) {
 	<-done
 }
 
+func TestMessageQueue_Scenarios(t *testing.T) {
+	logger := slog.New(new(mockLogger))
+	messageQueue := make(chan *sarama.ProducerMessage, 1)
+
+	handler, err := githubwebhookhandler.New(
+		githubwebhookhandler.WithLogger(logger),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithWebhookSecret("my-secret"),
+		githubwebhookhandler.WithProducerGitHubMessageQueue(messageQueue),
+	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, handler)
+
+	secret := "my-secret"
+	body := `{"sender": {"login": "test", "id": 123, "payload": "OK"}}`
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(body))
+	signature := "sha256=" + hex.EncodeToString(mac.Sum(nil))
+
+	ctx := newMockRequestCtx()
+	ctx.Request.SetBodyString(body)
+	ctx.Request.Header.Set("X-Hub-Signature-256", signature)
+	ctx.Request.Header.Set("X-Github-Event", "push")
+	ctx.Request.Header.Set("X-Github-Delivery", uuid.New().String())
+	ctx.Request.Header.Set("X-Github-Hook-Id", "123")
+	ctx.Request.Header.Set("X-Github-Hook-Installation-Target-Id", "456")
+	ctx.Request.Header.Set("X-Github-Hook-Installation-Target-Type", "repository")
+
+	handler.Handle(ctx)
+
+	go func() {
+		msg := <-messageQueue
+		assert.NotNil(t, msg)
+		assert.Equal(t, string(msg.Value.(sarama.ByteEncoder)), body)
+	}()
+
+	assert.Equal(t, fasthttp.StatusAccepted, ctx.Response.StatusCode())
+	assert.NotEmpty(t, <-messageQueue)
+}
+
 func TestHandle_Success(t *testing.T) {
 	logger := slog.New(new(mockLogger))
 	messageQueue := make(chan *sarama.ProducerMessage, 10)
