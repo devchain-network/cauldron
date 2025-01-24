@@ -27,6 +27,8 @@ const (
 	DefaultMaxRetries   = 10
 )
 
+var _ KafkaConsumer = (*Consumer)(nil) // compile time proof
+
 // KafkaConsumer defines kafka consumer behaviours.
 type KafkaConsumer interface {
 	Consume() error
