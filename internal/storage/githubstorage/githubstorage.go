@@ -60,6 +60,8 @@ type GitHubStorage struct {
 
 func (GitHubStorage) prepareGitHubPayload(message *sarama.ConsumerMessage) (*GitHub, error) {
 	githubStorage := new(GitHub)
+	githubStorage.KafkaPartition = message.Partition
+	githubStorage.KafkaOffset = message.Offset
 
 	deliveryID, err := uuid.Parse(string(message.Key))
 	if err != nil {
