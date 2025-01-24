@@ -22,7 +22,7 @@ services:
       context: .
       dockerfile: Dockerfile.migrator
     environment:
-      DATABASE_URL: "${DATABASE_URL_INFRA}"
+      DATABASE_URL_MIGRATION: "${DATABASE_URL_INFRA_MIGRATION}"
     depends_on:
       postgresql_db:
         condition: service_healthy

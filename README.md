@@ -13,39 +13,13 @@ A dynamic hub where incoming webhooks brew, process, and transform seamlessly.
 
 More information will be provided soon.
 
----
-
-## Supported GitHub Webhook Events
-
-https://docs.github.com/en/webhooks/webhook-events-and-payloads
-
-Applies to repositories and organizations.
-
-| Event | Description |
-|:------|:-----|
-| `commit_comment`              | Commit or diff commented on |
-| `create`                      | Branch or Tag creation |
-| `delete`                      | Branch or Tag deletion |
-| `dependabot_alert`            | This event occurs when there is activity relating to Dependabot alerts |
-| `fork`                        | Repository forked |
-| `gollum`                      | Wiki page updated |
-| `issue_comment`               | Issue comment created, edited, or deleted |
-| `issues`                      | Issue opened, edited, deleted, transferred, pinned, unpinned, closed, reopened, assigned, unassigned, labeled, unlabeled, milestoned, demilestoned, locked, or unlocked |
-| `ping`                        | The ping event is a confirmation from GitHub that you configured the webhook correctly |
-| `pull_request`                | Pull request assigned, auto merge disabled, auto merge enabled, closed, converted to draft, demilestoned, dequeued, edited, enqueued, labeled, locked, milestoned, opened, ready for review, reopened, review request removed, review requested, synchronized, unassigned, unlabeled, or unlocked |
-| `pull_request_review_comment` | Pull request diff comment created, edited, or deleted |
-| `pull_request_review`         | Pull request review submitted, edited, or dismissed |
-| `push`                        | Git push to a repository |
-| `release`                     | Release created, edited, published, unpublished, or deleted |
-| `repository`                  | This event occurs when there is activity relating to repositories |
-| `star`                        | A star is created or deleted from a repository |
-| `watch`                       | User stars a repository |
+You are very welcome to contribute! Click [here][01] to see notes related to development.
 
 ---
 
 ## License
 
-This project is licensed under MIT
+This project is licensed under MIT.
 
 ---
 
@@ -53,3 +27,4 @@ This project is intended to be a safe, welcoming space for collaboration, and
 contributors are expected to adhere to the [code of conduct][coc].
 
 [coc]: https://github.com/devchain-network/cauldron/blob/main/CODE_OF_CONDUCT.md
+[01]: https://github.com/devchain-network/cauldron/blob/main/DEVELOPMENT.md
