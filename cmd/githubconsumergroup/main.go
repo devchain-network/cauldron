@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/IBM/sarama"
 	"github.com/devchain-network/cauldron/internal/kafkacp"
 	"github.com/devchain-network/cauldron/internal/kafkacp/kafkaconsumergroup"
 	"github.com/devchain-network/cauldron/internal/slogger"
@@ -12,6 +13,16 @@ import (
 	"github.com/devchain-network/cauldron/internal/storage/githubstorage"
 	"github.com/vigo/getenv"
 )
+
+func storeMessage(strg storage.PingStorer) kafkaconsumergroup.ProcessMessageFunc {
+	return func(ctx context.Context, msg *sarama.ConsumerMessage) error {
+		if err := strg.MessageStore(ctx, msg); err != nil {
+			return fmt.Errorf("message store error: [%w]", err)
+		}
+
+		return nil
+	}
+}
 
 // Run runs kafa github consumer group.
 func Run() error {
@@ -59,7 +70,7 @@ func Run() error {
 
 	kafkaGitHubConsumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithStorage(db),
+		kafkaconsumergroup.WithProcessMessageFunc(storeMessage(db)),
 		kafkaconsumergroup.WithKafkaBrokers(*brokersList),
 		kafkaconsumergroup.WithDialTimeout(*kafkaDialTimeout),
 		kafkaconsumergroup.WithReadTimeout(*kafkaReadTimeout),

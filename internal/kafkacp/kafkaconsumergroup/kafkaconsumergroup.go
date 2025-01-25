@@ -14,7 +14,6 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/devchain-network/cauldron/internal/cerrors"
 	"github.com/devchain-network/cauldron/internal/kafkacp"
-	"github.com/devchain-network/cauldron/internal/storage"
 )
 
 // defaults.
@@ -32,8 +31,8 @@ var _ sarama.ConsumerGroupHandler = (*Consumer)(nil) // compile time proof
 type Consumer struct {
 	KafkaGroupName                 string
 	Logger                         *slog.Logger
-	Storage                        storage.PingStorer
 	SaramaConsumerGroupFactoryFunc SaramaConsumerGroupFactoryFunc
+	ProcessMessageFunc             ProcessMessageFunc
 	MessageQueue                   chan *sarama.ConsumerMessage
 	SaramaConsumerGroup            sarama.ConsumerGroup
 	Topic                          kafkacp.KafkaTopicIdentifier
@@ -51,21 +50,36 @@ type Consumer struct {
 // SaramaConsumerGroupFactoryFunc is a factory function.
 type SaramaConsumerGroupFactoryFunc func([]string, string, *sarama.Config) (sarama.ConsumerGroup, error)
 
+// ProcessMessageFunc is a factory function for callers.
+type ProcessMessageFunc func(ctx context.Context, msg *sarama.ConsumerMessage) error
+
 func (c *Consumer) checkRequired() error {
 	if c.Logger == nil {
-		return fmt.Errorf("kafka consumer group check required, Logger error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf(
+			"[kafkaconsumergroup.checkRequired] Logger error: [%w, 'nil' received]",
+			cerrors.ErrValueRequired,
+		)
 	}
 
-	if c.Storage == nil {
-		return fmt.Errorf("kafka consumer group check required, Storage error: [%w]", cerrors.ErrValueRequired)
+	if c.ProcessMessageFunc == nil {
+		return fmt.Errorf(
+			"[kafkaconsumergroup.checkRequired] ProcessMessageFunc error: [%w, 'nil' received]",
+			cerrors.ErrValueRequired,
+		)
 	}
 
 	if c.KafkaGroupName == "" {
-		return fmt.Errorf("kafka consumer group check required, KafkaGroupName error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf(
+			"[kafkaconsumergroup.checkRequired] KafkaGroupName error: [%w, empty string received]",
+			cerrors.ErrValueRequired,
+		)
 	}
 
 	if !c.Topic.Valid() {
-		return fmt.Errorf("kafka consumer group check required, Topic error: [%w]", cerrors.ErrInvalid)
+		return fmt.Errorf(
+			"[kafkaconsumergroup.checkRequired] Topic error: [%w, false received]",
+			cerrors.ErrInvalid,
+		)
 	}
 
 	return nil
@@ -135,14 +149,19 @@ func (c Consumer) StartConsume() error {
 						return
 					}
 
+					if err := c.ProcessMessageFunc(ctx, msg); err != nil {
+						c.Logger.Error("kafka consumer group process message", "error", err, "worker", i)
+
+						continue
+					}
+
 					c.Logger.Info(
-						"store message here",
+						"message is stored to database",
 						"worker", i,
 						"topic", msg.Topic,
 						"partition", msg.Partition,
 						"offset", msg.Offset,
 						"key", string(msg.Key),
-						// "value", string(msg.Value),
 					)
 
 				case <-ctx.Done():
@@ -182,7 +201,10 @@ func (c Consumer) StartConsume() error {
 	wg.Wait()
 
 	if err := c.SaramaConsumerGroup.Close(); err != nil {
-		return fmt.Errorf("failed to close consumer group, error: [%w]", err)
+		return fmt.Errorf(
+			"[kafkaconsumergroup.StartConsume][SaramaConsumerGroup.Close] error: [%w]",
+			err,
+		)
 	}
 
 	c.Logger.Info("all workers are stopped")
@@ -197,21 +219,12 @@ type Option func(*Consumer) error
 func WithLogger(l *slog.Logger) Option {
 	return func(c *Consumer) error {
 		if l == nil {
-			return fmt.Errorf("kafka consumer group WithLogger error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf(
+				"[kafkaconsumergroup.WithLogger] error: [%w, 'nil' received]",
+				cerrors.ErrValueRequired,
+			)
 		}
 		c.Logger = l
-
-		return nil
-	}
-}
-
-// WithStorage sets storage value.
-func WithStorage(st storage.PingStorer) Option {
-	return func(c *Consumer) error {
-		if st == nil {
-			return fmt.Errorf("kafka consumer group WithStorage error: [%w]", cerrors.ErrValueRequired)
-		}
-		c.Storage = st
 
 		return nil
 	}
@@ -222,7 +235,10 @@ func WithTopic(s string) Option {
 	return func(c *Consumer) error {
 		kt := kafkacp.KafkaTopicIdentifier(s)
 		if !kt.Valid() {
-			return fmt.Errorf("kafka consumer group WithTopic error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf(
+				"[kafkaconsumergroup.WithTopic] error: [%w, '%s' received]",
+				cerrors.ErrInvalid, s,
+			)
 		}
 		c.Topic = kt
 
@@ -235,7 +251,10 @@ func WithKafkaVersion(s string) Option {
 	return func(c *Consumer) error {
 		version, err := sarama.ParseKafkaVersion(s)
 		if err != nil {
-			return fmt.Errorf("kafka consumer group WithKafkaVersion error: [%w][%w]", err, cerrors.ErrInvalid)
+			return fmt.Errorf(
+				"[kafkaconsumergroup.WithKafkaVersion] error: [(%w) %w, '%s' received]",
+				err, cerrors.ErrInvalid, s,
+			)
 		}
 
 		c.KafkaVersion = version
@@ -250,7 +269,10 @@ func WithKafkaBrokers(brokers string) Option {
 		var kafkaBrokers kafkacp.KafkaBrokers
 		kafkaBrokers.AddFromString(brokers)
 		if !kafkaBrokers.Valid() {
-			return fmt.Errorf("kafka consumer group WithKafkaBrokers error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf(
+				"[kafkaconsumergroup.WithKafkaBrokers] error: [%w, '%s' received]",
+				cerrors.ErrInvalid, brokers,
+			)
 		}
 
 		c.KafkaBrokers = kafkaBrokers
@@ -263,7 +285,10 @@ func WithKafkaBrokers(brokers string) Option {
 func WithDialTimeout(d time.Duration) Option {
 	return func(c *Consumer) error {
 		if d < 0 {
-			return fmt.Errorf("kafka consumer WithDialTimeout error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf(
+				"[kafkaconsumergroup.WithDialTimeout] error: [%w, '%s' received, must > 0]",
+				cerrors.ErrInvalid, d,
+			)
 		}
 		c.DialTimeout = d
 
@@ -275,7 +300,10 @@ func WithDialTimeout(d time.Duration) Option {
 func WithReadTimeout(d time.Duration) Option {
 	return func(c *Consumer) error {
 		if d < 0 {
-			return fmt.Errorf("kafka consumer group WithReadTimeout error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf(
+				"[kafkaconsumergroup.WithReadTimeout] error: [%w, '%s' received, must > 0]",
+				cerrors.ErrInvalid, d,
+			)
 		}
 		c.ReadTimeout = d
 
@@ -287,7 +315,10 @@ func WithReadTimeout(d time.Duration) Option {
 func WithWriteTimeout(d time.Duration) Option {
 	return func(c *Consumer) error {
 		if d < 0 {
-			return fmt.Errorf("kafka consumer group WithWriteTimeout error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf(
+				"[kafkaconsumergroup.WithWriteTimeout] error: [%w, '%s' received, must > 0]",
+				cerrors.ErrInvalid, d,
+			)
 		}
 		c.WriteTimeout = d
 
@@ -299,11 +330,17 @@ func WithWriteTimeout(d time.Duration) Option {
 func WithBackoff(d time.Duration) Option {
 	return func(c *Consumer) error {
 		if d == 0 {
-			return fmt.Errorf("kafka consumer group WithBackoff error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf(
+				"[kafkaconsumergroup.WithBackoff] error: [%w, '%s' received, 0 is not allowed]",
+				cerrors.ErrValueRequired, d,
+			)
 		}
 
 		if d < 0 || d > time.Minute {
-			return fmt.Errorf("kafka consumer group WithBackoff error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf(
+				"[kafkaconsumergroup.WithBackoff] error: [%w, '%s' received, must > 0 or < minute]",
+				cerrors.ErrInvalid, d,
+			)
 		}
 
 		c.Backoff = d
@@ -316,7 +353,10 @@ func WithBackoff(d time.Duration) Option {
 func WithMaxRetries(i int) Option {
 	return func(c *Consumer) error {
 		if i > math.MaxUint8 || i < 0 {
-			return fmt.Errorf("kafka consumer group WithMaxRetries error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf(
+				"[kafkaconsumergroup.WithMaxRetries] error: [%w, '%[2]d' received, must < %[2]d or > 0]",
+				cerrors.ErrInvalid, i,
+			)
 		}
 		c.MaxRetries = uint8(i)
 
@@ -328,7 +368,10 @@ func WithMaxRetries(i int) Option {
 func WithKafkaGroupName(s string) Option {
 	return func(c *Consumer) error {
 		if s == "" {
-			return fmt.Errorf("kafka consumer group WithKafkaGroupName error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf(
+				"[kafkaconsumergroup.WithKafkaGroupName] error: [%w, empty string received]",
+				cerrors.ErrValueRequired,
+			)
 		}
 		c.KafkaGroupName = s
 
@@ -337,16 +380,31 @@ func WithKafkaGroupName(s string) Option {
 }
 
 // WithSaramaConsumerGroupFactoryFunc sets a custom factory function for Sarama consumer group.
-func WithSaramaConsumerGroupFactoryFunc(factory SaramaConsumerGroupFactoryFunc) Option {
+func WithSaramaConsumerGroupFactoryFunc(fn SaramaConsumerGroupFactoryFunc) Option {
 	return func(c *Consumer) error {
-		if factory == nil {
+		if fn == nil {
 			return fmt.Errorf(
-				"kafka consumer group WithSaramaConsumerGroupFactoryFunc error: [%w]",
+				"[kafkaconsumergroup.WithSaramaConsumerGroupFactoryFunc] error: [%w, 'nil' received]",
 				cerrors.ErrValueRequired,
 			)
 		}
 
-		c.SaramaConsumerGroupFactoryFunc = factory
+		c.SaramaConsumerGroupFactoryFunc = fn
+
+		return nil
+	}
+}
+
+// WithProcessMessageFunc sets the message processor.
+func WithProcessMessageFunc(fn ProcessMessageFunc) Option {
+	return func(c *Consumer) error {
+		if fn == nil {
+			return fmt.Errorf(
+				"[kafkaconsumergroup.WithProcessMessageFunc] error: [%w, 'nil' received]",
+				cerrors.ErrValueRequired,
+			)
+		}
+		c.ProcessMessageFunc = fn
 
 		return nil
 	}
@@ -373,7 +431,7 @@ func New(options ...Option) (*Consumer, error) {
 
 	for _, option := range options {
 		if err := option(consumer); err != nil {
-			return nil, fmt.Errorf("kafka consumer group option error: [%w]", err)
+			return nil, err
 		}
 	}
 
@@ -414,7 +472,10 @@ func New(options ...Option) (*Consumer, error) {
 		backoff *= 2
 	}
 	if saramaConsumerGroupErr != nil {
-		return nil, fmt.Errorf("kafka consumer group, group error: [%w]", saramaConsumerGroupErr)
+		return nil, fmt.Errorf(
+			"[kafkaconsumergroup.New][SaramaConsumerGroupFactoryFunc] error: [%w]",
+			saramaConsumerGroupErr,
+		)
 	}
 
 	consumer.Logger.Info("successfully connected to", "broker", consumer.KafkaBrokers)
