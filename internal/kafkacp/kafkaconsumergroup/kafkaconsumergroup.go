@@ -30,11 +30,11 @@ var _ sarama.ConsumerGroupHandler = (*Consumer)(nil) // compile time proof
 
 // Consumer represents kafa group consumer setup.
 type Consumer struct {
-	KafkaGroupName string
-	Logger         *slog.Logger
-	Storage        storage.PingStorer
-	// SaramaConfig                   *sarama.Config
+	KafkaGroupName                 string
+	Logger                         *slog.Logger
+	Storage                        storage.PingStorer
 	SaramaConsumerGroupFactoryFunc SaramaConsumerGroupFactoryFunc
+	MessageQueue                   chan *sarama.ConsumerMessage
 	SaramaConsumerGroup            sarama.ConsumerGroup
 	Topic                          kafkacp.KafkaTopicIdentifier
 	KafkaBrokers                   kafkacp.KafkaBrokers
@@ -44,6 +44,7 @@ type Consumer struct {
 	WriteTimeout                   time.Duration
 	Backoff                        time.Duration
 	MaxRetries                     uint8
+	MessageBufferSize              int
 	NumberOfWorkers                int
 }
 
@@ -70,16 +71,16 @@ func (c *Consumer) checkRequired() error {
 	return nil
 }
 
-// Setup ...
+// Setup implements sarama ConsumerGroupHandler interface.
 func (Consumer) Setup(_ sarama.ConsumerGroupSession) error { return nil }
 
-// Cleanup ...
+// Cleanup implements sarama ConsumerGroupHandler interface.
 func (Consumer) Cleanup(_ sarama.ConsumerGroupSession) error { return nil }
 
-// ConsumeClaim ...
-func (Consumer) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+// ConsumeClaim implements sarama ConsumerGroupHandler interface.
+func (c Consumer) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for msg := range claim.Messages() {
-		fmt.Println(msg.Topic, msg.Partition, msg.Offset, string(msg.Key), string(msg.Value))
+		c.MessageQueue <- msg
 
 		sess.MarkMessage(msg, "")
 	}
@@ -87,10 +88,12 @@ func (Consumer) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.Cons
 	return nil
 }
 
-// StartConsume ...
+// StartConsume consumes message from kafka.
 func (c Consumer) StartConsume() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill)
 	defer cancel()
+
+	topics := []string{c.Topic.String()}
 
 	var wg sync.WaitGroup
 
@@ -106,7 +109,7 @@ func (c Consumer) StartConsume() error {
 
 					return
 				}
-				c.Logger.Error("group errrrrrrrrr", "error", err)
+				c.Logger.Error("kafka consumer group error", "error", err)
 			case <-ctx.Done():
 				c.Logger.Info("context canceled, stopping error handler")
 
@@ -115,10 +118,46 @@ func (c Consumer) StartConsume() error {
 		}
 	}()
 
+	c.Logger.Info("starting workers", "count", c.NumberOfWorkers)
+	for i := range c.NumberOfWorkers {
+		wg.Add(1)
+
+		go func() {
+			defer func() {
+				wg.Done()
+				c.Logger.Info("worker stopped", "id", i)
+			}()
+
+			for {
+				select {
+				case msg, ok := <-c.MessageQueue:
+					if !ok {
+						return
+					}
+
+					c.Logger.Info(
+						"store message here",
+						"worker", i,
+						"topic", msg.Topic,
+						"partition", msg.Partition,
+						"offset", msg.Offset,
+						"key", string(msg.Key),
+						// "value", string(msg.Value),
+					)
+
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+	}
+
 	wg.Add(1)
 	go func() {
-		defer wg.Done()
-		topics := []string{c.Topic.String()}
+		defer func() {
+			wg.Done()
+			close(c.MessageQueue)
+		}()
 
 		for {
 			if ctx.Err() != nil {
@@ -134,7 +173,7 @@ func (c Consumer) StartConsume() error {
 					return
 				}
 
-				c.Logger.Error("erroooo", "error", err)
+				c.Logger.Error("kafka consume group consume", "error", err)
 			}
 		}
 	}()
@@ -327,8 +366,10 @@ func New(options ...Option) (*Consumer, error) {
 	consumer.Backoff = DefaultBackoff
 	consumer.MaxRetries = DefaultMaxRetries
 	consumer.NumberOfWorkers = runtime.NumCPU()
+	consumer.MessageBufferSize = consumer.NumberOfWorkers * 10
 	consumer.KafkaVersion = sarama.V3_9_0_0
 	consumer.SaramaConsumerGroupFactoryFunc = sarama.NewConsumerGroup
+	consumer.MessageQueue = make(chan *sarama.ConsumerMessage, consumer.MessageBufferSize)
 
 	for _, option := range options {
 		if err := option(consumer); err != nil {
