@@ -13,16 +13,12 @@ import (
 	"github.com/vigo/getenv"
 )
 
-const (
-	defaultKafkaConsumerTopic = "github"
-)
-
 // Run runs kafa github consumer.
 func Run() error {
 	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
 	brokersList := getenv.String("KCP_BROKERS", kafkacp.DefaultKafkaBrokers)
 
-	kafkaTopic := getenv.String("KC_TOPIC_GITHUB", defaultKafkaConsumerTopic)
+	kafkaTopic := getenv.String("KC_TOPIC_GITHUB", "")
 	kafkaPartition := getenv.Int("KC_PARTITION", kafkaconsumer.DefaultPartition)
 	kafkaDialTimeout := getenv.Duration("KC_DIAL_TIMEOUT", kafkaconsumer.DefaultDialTimeout)
 	kafkaReadTimeout := getenv.Duration("KC_READ_TIMEOUT", kafkaconsumer.DefaultReadTimeout)

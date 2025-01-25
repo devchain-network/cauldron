@@ -36,6 +36,7 @@ namespace :run do
 
   namespace :kafka do
     namespace :github do
+
       desc 'run kafka github consumer'
       task :consumer do
         run = %{ go run -race cmd/githubconsumer/main.go }
@@ -47,6 +48,19 @@ namespace :run do
         Process.kill('KILL', pid)
         0
       end
+
+      desc 'run kafka github consumer group'
+      task :consumer_group do
+        run = %{ go run -race cmd/githubconsumergroup/main.go }
+        pid = Process.spawn(run)
+        Process.wait(pid)
+        $CHILD_STATUS&.exitstatus || 1
+      rescue Interrupt
+        Process.getpgid(pid)
+        Process.kill('KILL', pid)
+        0
+      end
+
     end
   end
 end

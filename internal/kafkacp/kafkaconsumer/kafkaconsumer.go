@@ -337,7 +337,10 @@ func New(options ...Option) (*Consumer, error) {
 	backoff := consumer.Backoff
 
 	for i := range consumer.MaxRetries {
-		sconsumer, sconsumerErr = consumer.SaramaConsumerFactoryFunc(consumer.KafkaBrokers.ToStringSlice(), config)
+		sconsumer, sconsumerErr = consumer.SaramaConsumerFactoryFunc(
+			consumer.KafkaBrokers.ToStringSlice(),
+			config,
+		)
 		if sconsumerErr == nil {
 			break
 		}

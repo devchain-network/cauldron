@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/devchain-network/cauldron/internal/kafkacp"
 	"github.com/devchain-network/cauldron/internal/kafkacp/kafkaconsumergroup"
 	"github.com/devchain-network/cauldron/internal/slogger"
 	"github.com/devchain-network/cauldron/internal/storage"
@@ -12,14 +13,17 @@ import (
 	"github.com/vigo/getenv"
 )
 
-// const (
-// 	defaultKafkaConsumerTopic = "github"
-// )
-
-// Run ...
+// Run runs kafa github consumer group.
 func Run() error {
 	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
-	// kafkaTopic := getenv.String("KC_TOPIC_GITHUB", defaultKafkaConsumerTopic)
+	brokersList := getenv.String("KCP_BROKERS", kafkacp.DefaultKafkaBrokers)
+	kafkaTopic := getenv.String("KC_TOPIC_GITHUB", "")
+	kafkaConsumerGroup := getenv.String("KCG_NAME", "github-group")
+	kafkaDialTimeout := getenv.Duration("KC_DIAL_TIMEOUT", kafkaconsumergroup.DefaultDialTimeout)
+	kafkaReadTimeout := getenv.Duration("KC_READ_TIMEOUT", kafkaconsumergroup.DefaultReadTimeout)
+	kafkaWriteTimeout := getenv.Duration("KC_WRITE_TIMEOUT", kafkaconsumergroup.DefaultWriteTimeout)
+	kafkaBackoff := getenv.Duration("KC_BACKOFF", kafkaconsumergroup.DefaultBackoff)
+	kafkaMaxRetries := getenv.Int("KC_MAX_RETRIES", kafkaconsumergroup.DefaultMaxRetries)
 	databaseURL := getenv.String("DATABASE_URL", "")
 
 	if err := getenv.Parse(); err != nil {
@@ -56,6 +60,14 @@ func Run() error {
 	kafkaGitHubConsumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
 		kafkaconsumergroup.WithStorage(db),
+		kafkaconsumergroup.WithKafkaBrokers(*brokersList),
+		kafkaconsumergroup.WithDialTimeout(*kafkaDialTimeout),
+		kafkaconsumergroup.WithReadTimeout(*kafkaReadTimeout),
+		kafkaconsumergroup.WithWriteTimeout(*kafkaWriteTimeout),
+		kafkaconsumergroup.WithBackoff(*kafkaBackoff),
+		kafkaconsumergroup.WithMaxRetries(*kafkaMaxRetries),
+		kafkaconsumergroup.WithTopic(*kafkaTopic),
+		kafkaconsumergroup.WithKafkaGroupName(*kafkaConsumerGroup),
 	)
 	if err != nil {
 		return fmt.Errorf("github kafka group consumer instantiate error: [%w]", err)
@@ -75,27 +87,3 @@ func main() {
 		log.Fatal(err)
 	}
 }
-
-// import (
-
-// 	kafkaConsumer, err := kafkaconsumergroup.New(
-// 		kafkaconsumergroup.WithLogger(logger),
-// 		kafkaconsumergroup.WithStorage(db),
-// 	)
-// 	if err != nil {
-// 		return fmt.Errorf("kafka consumer instantiate error: [%w]", err)
-// 	}
-//
-// 	for {
-// 		if err = kafkaConsumer.SaramaConsumerGroup.Consume(
-// 			ctx, []string{*kafkaTopic}, kafkaConsumer.ConsumerGroupHandler,
-// 		); err != nil {
-// 			logger.Error("error", "error", err)
-//
-// 			continue
-// 		}
-// 	}
-//
-// 	// return nil
-// }
-//
