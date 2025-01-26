@@ -37,21 +37,6 @@ func (h *mockLogger) WithGroup(name string) slog.Handler {
 	return h
 }
 
-// mockStorage ----------------------------------------------------------------
-type mockStorage struct {
-	mock.Mock
-}
-
-func (m *mockStorage) MessageStore(ctx context.Context, msg *sarama.ConsumerMessage) error {
-	args := m.Called(ctx, msg)
-	return args.Error(0)
-}
-
-func (m *mockStorage) Ping(ctx context.Context, maxRetries uint8, backoff time.Duration) error {
-	args := m.Called(ctx, maxRetries, backoff)
-	return args.Error(0)
-}
-
 // mockConsumerGroup ----------------------------------------------------------
 type mockConsumerGroup struct {
 	mock.Mock

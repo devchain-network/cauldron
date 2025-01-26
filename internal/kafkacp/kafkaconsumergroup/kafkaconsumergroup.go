@@ -355,8 +355,8 @@ func WithMaxRetries(i int) Option {
 	return func(c *Consumer) error {
 		if i > math.MaxUint8 || i < 0 {
 			return fmt.Errorf(
-				"[kafkaconsumergroup.WithMaxRetries] error: [%w, '%[2]d' received, must < %[2]d or > 0]",
-				cerrors.ErrInvalid, i,
+				"[kafkaconsumergroup.WithMaxRetries] error: [%w, '%d' received, must < %d or > 0]",
+				cerrors.ErrInvalid, i, math.MaxUint8,
 			)
 		}
 		c.MaxRetries = uint8(i)
