@@ -35,6 +35,7 @@ type Consumer struct {
 	ProcessMessageFunc             ProcessMessageFunc
 	MessageQueue                   chan *sarama.ConsumerMessage
 	SaramaConsumerGroup            sarama.ConsumerGroup
+	SaramaConsumerGroupHandler     sarama.ConsumerGroupHandler
 	Topic                          kafkacp.KafkaTopicIdentifier
 	KafkaBrokers                   kafkacp.KafkaBrokers
 	KafkaVersion                   sarama.KafkaVersion
@@ -185,7 +186,7 @@ func (c Consumer) StartConsume() error {
 				return
 			}
 
-			if err := c.SaramaConsumerGroup.Consume(ctx, topics, c); err != nil {
+			if err := c.SaramaConsumerGroup.Consume(ctx, topics, c.SaramaConsumerGroupHandler); err != nil {
 				if ctx.Err() != nil {
 					c.Logger.Info("consume stopped due to context cancellation")
 
@@ -410,6 +411,21 @@ func WithProcessMessageFunc(fn ProcessMessageFunc) Option {
 	}
 }
 
+// WithSaramaConsumerGroupHandler sets sarama consumer group handler.
+func WithSaramaConsumerGroupHandler(handler sarama.ConsumerGroupHandler) Option {
+	return func(c *Consumer) error {
+		if handler == nil {
+			return fmt.Errorf(
+				"[kafkaconsumergroup.WithSaramaConsumerGroupHandler] error: [%w, 'nil' received]",
+				cerrors.ErrValueRequired,
+			)
+		}
+		c.SaramaConsumerGroupHandler = handler
+
+		return nil
+	}
+}
+
 // New instantiates new kafka github consumer group instance.
 func New(options ...Option) (*Consumer, error) {
 	consumer := new(Consumer)
@@ -437,6 +453,10 @@ func New(options ...Option) (*Consumer, error) {
 
 	if err := consumer.checkRequired(); err != nil {
 		return nil, err
+	}
+
+	if consumer.SaramaConsumerGroupHandler == nil {
+		consumer.SaramaConsumerGroupHandler = consumer
 	}
 
 	config := sarama.NewConfig()

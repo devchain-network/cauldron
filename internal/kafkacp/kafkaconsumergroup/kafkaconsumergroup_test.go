@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"os"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -15,6 +18,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+// mockLogger -----------------------------------------------------------------
 type mockLogger struct{}
 
 func (h *mockLogger) Enabled(_ context.Context, _ slog.Level) bool {
@@ -33,6 +37,7 @@ func (h *mockLogger) WithGroup(name string) slog.Handler {
 	return h
 }
 
+// mockStorage ----------------------------------------------------------------
 type mockStorage struct {
 	mock.Mock
 }
@@ -47,6 +52,7 @@ func (m *mockStorage) Ping(ctx context.Context, maxRetries uint8, backoff time.D
 	return args.Error(0)
 }
 
+// mockConsumerGroup ----------------------------------------------------------
 type mockConsumerGroup struct {
 	mock.Mock
 }
@@ -82,6 +88,7 @@ func (m *mockConsumerGroup) ResumeAll() {
 	m.Called()
 }
 
+// mockConsumerGroupFactory ---------------------------------------------------
 type mockConsumerGroupFactory struct {
 	mock.Mock
 }
@@ -361,6 +368,26 @@ func TestNew_InvalidKafkaVersion(t *testing.T) {
 	assert.Nil(t, consumer)
 }
 
+func TestNew_NilSaramaConsumerGroupHandler(t *testing.T) {
+	logger := slog.New(new(mockLogger))
+
+	consumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(
+			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
+				return nil
+			},
+		),
+		kafkaconsumergroup.WithKafkaGroupName("github-group"),
+		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
+		kafkaconsumergroup.WithSaramaConsumerGroupHandler(nil),
+	)
+
+	assert.ErrorIs(t, err, cerrors.ErrValueRequired)
+	assert.Nil(t, consumer)
+}
+
 func TestNew_NilSaramaConsumerGroupFactoryFunc(t *testing.T) {
 	logger := slog.New(new(mockLogger))
 
@@ -387,7 +414,7 @@ func TestNew_NilSaramaConsumerGroupFactoryFunc(t *testing.T) {
 	assert.Nil(t, consumer)
 }
 
-func TestNew_NilSaramaConsumerGroupFactoryFunc_Error(t *testing.T) {
+func TestNew_SaramaConsumerGroupFactoryFunc_Error(t *testing.T) {
 	logger := slog.New(new(mockLogger))
 
 	consumerGroup := &mockConsumerGroup{}
@@ -419,13 +446,12 @@ func TestNew_NilSaramaConsumerGroupFactoryFunc_Error(t *testing.T) {
 	consumerGroupFactory.AssertExpectations(t)
 }
 
-func TestNew_NilSaramaConsumerGroupFactoryFunc_Success(t *testing.T) {
+func TestNew_SaramaConsumerGroupFactoryFunc_Success(t *testing.T) {
 	logger := slog.New(new(mockLogger))
 
 	consumerGroup := &mockConsumerGroup{}
 	consumerGroupFactory := &mockConsumerGroupFactory{}
-	consumerGroupFactory.On(
-		"CreateConsumerGroup",
+	consumerGroupFactory.On("CreateConsumerGroup",
 		mock.Anything,
 		mock.Anything,
 		mock.Anything,
@@ -449,4 +475,68 @@ func TestNew_NilSaramaConsumerGroupFactoryFunc_Success(t *testing.T) {
 	assert.NoError(t, err)
 	consumerGroupFactory.AssertNumberOfCalls(t, "CreateConsumerGroup", 1)
 	consumerGroupFactory.AssertExpectations(t)
+}
+
+func TestNew_Consume_Success(t *testing.T) {
+	logger := slog.New(new(mockLogger))
+
+	consumerGroup := &mockConsumerGroup{}
+	consumerGroup.On("Errors").Return((<-chan error)(make(chan error)))
+
+	consumerGroupFactory := &mockConsumerGroupFactory{}
+	consumerGroupFactory.On("CreateConsumerGroup",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+	).Return(consumerGroup, nil)
+
+	consumerGroup.On("Consume", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	consumerGroup.On("Close").Return(nil).Once()
+
+	consumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(
+			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
+				return nil
+			},
+		),
+		kafkaconsumergroup.WithKafkaGroupName("github-group"),
+		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		kafkaconsumergroup.WithBackoff(100*time.Millisecond),
+		kafkaconsumergroup.WithMaxRetries(1),
+		kafkaconsumergroup.WithSaramaConsumerGroupFactoryFunc(consumerGroupFactory.CreateConsumerGroup),
+	)
+
+	assert.NotNil(t, consumer)
+	assert.NoError(t, err)
+
+	consumerGroupFactory.AssertNumberOfCalls(t, "CreateConsumerGroup", 1)
+	consumerGroupFactory.AssertExpectations(t)
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := consumer.StartConsume()
+		assert.NoError(t, err)
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		consumer.MessageQueue <- &sarama.ConsumerMessage{
+			Topic:     kafkacp.KafkaTopicIdentifierGitHub.String(),
+			Partition: 0,
+			Offset:    1,
+			Key:       []byte("key"),
+			Value:     []byte("value"),
+		}
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+	process, _ := os.FindProcess(syscall.Getpid())
+	_ = process.Signal(os.Interrupt)
+	wg.Wait()
 }
