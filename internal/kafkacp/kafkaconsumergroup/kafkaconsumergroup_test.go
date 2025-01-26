@@ -18,6 +18,10 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+var mockProcessMessage = func(ctx context.Context, msg *sarama.ConsumerMessage) error {
+	return nil
+}
+
 // mockLogger -----------------------------------------------------------------
 type mockLogger struct{}
 
@@ -131,11 +135,7 @@ func TestNew_NoGroupName(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 	)
 
 	assert.ErrorIs(t, err, cerrors.ErrValueRequired)
@@ -147,11 +147,7 @@ func TestNew_EmptyGroupName(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 		kafkaconsumergroup.WithKafkaGroupName(""),
 	)
 
@@ -164,11 +160,7 @@ func TestNew_NoTopic(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 		kafkaconsumergroup.WithKafkaGroupName("github-group"),
 	)
 
@@ -181,11 +173,7 @@ func TestNew_InvalidTopic(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 		kafkaconsumergroup.WithKafkaGroupName("github-group"),
 		kafkaconsumergroup.WithTopic("invalid"),
 	)
@@ -199,11 +187,7 @@ func TestNew_InvalidBrokers(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 		kafkaconsumergroup.WithKafkaGroupName("github-group"),
 		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumergroup.WithKafkaBrokers("invalid"),
@@ -218,11 +202,7 @@ func TestNew_InvalidDialTimeout(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 		kafkaconsumergroup.WithKafkaGroupName("github-group"),
 		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
@@ -238,11 +218,7 @@ func TestNew_InvalidReadTimeout(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 		kafkaconsumergroup.WithKafkaGroupName("github-group"),
 		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
@@ -258,11 +234,7 @@ func TestNew_InvalidWriteTimeout(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 		kafkaconsumergroup.WithKafkaGroupName("github-group"),
 		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
@@ -278,11 +250,7 @@ func TestNew_ZeroBackoff(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 		kafkaconsumergroup.WithKafkaGroupName("github-group"),
 		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
@@ -298,11 +266,7 @@ func TestNew_InvalidBackoff(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 		kafkaconsumergroup.WithKafkaGroupName("github-group"),
 		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
@@ -318,11 +282,7 @@ func TestNew_InvalidMaxRetries(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 		kafkaconsumergroup.WithKafkaGroupName("github-group"),
 		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
@@ -338,11 +298,7 @@ func TestNew_InvalidKafkaVersion(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 		kafkaconsumergroup.WithKafkaGroupName("github-group"),
 		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
@@ -358,11 +314,7 @@ func TestNew_NilSaramaConsumerGroupHandler(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 		kafkaconsumergroup.WithKafkaGroupName("github-group"),
 		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
@@ -378,11 +330,7 @@ func TestNew_NilSaramaConsumerGroupFactoryFunc(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 		kafkaconsumergroup.WithKafkaGroupName("github-group"),
 		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
@@ -413,11 +361,7 @@ func TestNew_SaramaConsumerGroupFactoryFunc_Error(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 		kafkaconsumergroup.WithKafkaGroupName("github-group"),
 		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumergroup.WithBackoff(100*time.Millisecond),
@@ -444,11 +388,7 @@ func TestNew_SaramaConsumerGroupFactoryFunc_Success(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 		kafkaconsumergroup.WithKafkaGroupName("github-group"),
 		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumergroup.WithBackoff(100*time.Millisecond),
@@ -480,11 +420,7 @@ func TestNew_Consume_Success(t *testing.T) {
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
-		kafkaconsumergroup.WithProcessMessageFunc(
-			func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-				return nil
-			},
-		),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessage),
 		kafkaconsumergroup.WithKafkaGroupName("github-group"),
 		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumergroup.WithBackoff(100*time.Millisecond),
