@@ -71,7 +71,8 @@ bundle
 |:---------|:------------|---------|
 | `LOG_LEVEL` | Logging level, Valid values are: `"DEBUG"`, `"INFO"`, `"WARN"`, `"ERROR"` | `"INFO"` |
 | `KCP_BROKERS` | Kafka consumer/producer brokers list, comma separated | `"127.0.0.1:9094"` |
-| `KC_TOPIC_GITHUB` | Topic name for GitHub webhook consumer | `github` |
+| `KC_TOPIC_GITHUB` | Topic name for GitHub webhook consumer | `""` |
+| `KCG_NAME` | Kafka consumer group name | `""` |
 | `KC_PARTITION` | Consumer partition number | `0` |
 | `KC_DIAL_TIMEOUT` | Initial connection timeout used by broker (shared with consumer) | "`30s`" (seconds) |
 | `KC_READ_TIMEOUT` | Response timeout used by broker (shared with consumer) | "`30s`" (seconds) |
@@ -154,8 +155,11 @@ export KP_GITHUB_MESSAGE_QUEUE_SIZE=100
 # export KP_BACKOFF="2s"
 # export KP_MAX_RETRIES="10"
 
-# kafka github consumer optional values.
-# export KC_TOPIC_GITHUB="github"
+# kafka github consumer group values.
+export KC_TOPIC_GITHUB="github"
+export KCG_NAME="github-group"
+
+# kafka github consumer group optional values.
 # export KC_PARTITION="0"
 # export KC_DIAL_TIMEOUT="30s"
 # export KC_READ_TIMEOUT="30s"
@@ -212,31 +216,27 @@ of `rake tasks`:
 ```bash
 rake -T
 
-rake db:init                       # init database
-rake db:migrate                    # runs rake db:migrate up (shortcut)
-rake db:migrate:down               # run migrate down
-rake db:migrate:goto[index]        # go to migration
-rake db:migrate:up                 # run migrate up
-rake db:psql                       # connect local db with psql
-rake db:reset                      # reset database (drop and create)
-rake default                       # default task, runs server
-rake docker:build:github_consumer  # build github consumer
-rake docker:build:migrator         # build migrator
-rake docker:build:server           # build server
-rake docker:compose:infra:down     # stop the infra with all components
-rake docker:compose:infra:up       # run the infra with all components
-rake docker:compose:kafka:down     # stop the kafka and kafka-ui only
-rake docker:compose:kafka:up       # run the kafka and kafka-ui only
-rake docker:run:github_consumer    # run github consumer
-rake docker:run:migrator           # run migrator
-rake docker:run:server             # run server
-rake lint                          # run golang-ci linter
-rake rubocop:autofix               # lint ruby and autofix
-rake rubocop:lint                  # lint ruby
-rake run:kafka:github:consumer     # run kafka github consumer
-rake run:server                    # run server
-rake test                          # runs tests (shortcut)
-rake test:coverage                 # run tests and show coverage
+rake db:init                          # init database
+rake db:migrate                       # runs rake db:migrate up (shortcut)
+rake db:migrate:down                  # run migrate down
+rake db:migrate:goto[index]           # go to migration
+rake db:migrate:up                    # run migrate up
+rake db:psql                          # connect local db with psql
+rake db:reset                         # reset database (drop and create)
+rake default                          # default task, runs server
+rake docker:compose:infra:down        # stop the infra with all components
+rake docker:compose:infra:up          # run the infra with all components
+rake docker:compose:kafka:down        # stop the kafka and kafka-ui only
+rake docker:compose:kafka:up          # run the kafka and kafka-ui only
+rake lint                             # run golang-ci linter
+rake psql:infra                       # connect to infra database with psql
+rake rubocop:autofix                  # lint ruby and autofix
+rake rubocop:lint                     # lint ruby
+rake run:kafka:github:consumer        # run kafka github consumer
+rake run:kafka:github:consumer_group  # run kafka github consumer group
+rake run:server                       # run server
+rake test                             # runs tests (shortcut)
+rake test:coverage                    # run tests and show coverage
 ```
 
 You can run tests:
@@ -347,23 +347,11 @@ rake rubocop:autofix   # lints ruby code and auto fixes.
 ```bash
 rake -T "docker:"
 
-rake docker:build:github_consumer  # build github consumer
-rake docker:build:migrator         # build migrator
-rake docker:build:server           # build server
-
-rake docker:compose:infra:down     # stop the infra with all components
-rake docker:compose:infra:up       # run the infra with all components
-rake docker:compose:kafka:down     # stop the kafka and kafka-ui only
-rake docker:compose:kafka:up       # run the kafka and kafka-ui only
-
-rake docker:run:github_consumer    # run github consumer
-rake docker:run:migrator           # run migrator
-rake docker:run:server             # run server
+rake docker:compose:infra:down  # stop the infra with all components
+rake docker:compose:infra:up    # run the infra with all components
+rake docker:compose:kafka:down  # stop the kafka and kafka-ui only
+rake docker:compose:kafka:up    # run the kafka and kafka-ui only
 ```
-
-- `docker:build:*`: builds images locally, testing purposes.
-- `docker:run:*`: runs containers locally, testing purposes.
-- `docker:compose:*`: ups or downs whole infrastructure with services.
 
 ---
 
@@ -406,10 +394,10 @@ Now you can access:
 
 - Kafka UI: `http://127.0.0.1:8080/`
 - Ngrok: `http://127.0.0.1:4040`
-- PostgreSQL: `PGPASSWORD="${POSTGRES_PASSWORD}" psql -h localhost -p 5433 -U postgres -d devchain_webhook`
+- PostgreSQL: `PGOPTIONS="--search_path=cauldron,public" PGPASSWORD="${POSTGRES_PASSWORD}" psql -h localhost -p 5433 -U postgres -d devchain_webhook`
 
 For PostgreSQL, `5433` is exposed in container to avoid conflicts with the
-local PostgreSQL instance.
+local PostgreSQL instance. Use `rake psql:infra` to connect your infra database.
 
 Logging for **kafka** and **kafka-ui** is set to `error` only. Due to development
 purposes, both were producing too much information, little clean up required.

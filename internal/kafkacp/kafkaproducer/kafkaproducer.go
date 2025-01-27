@@ -210,6 +210,7 @@ func New(options ...Option) (sarama.AsyncProducer, error) {
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Return.Successes = true
 	config.Producer.Return.Errors = true
+	config.Producer.Compression = sarama.CompressionSnappy
 	config.Net.DialTimeout = producer.DialTimeout
 	config.Net.ReadTimeout = producer.ReadTimeout
 	config.Net.WriteTimeout = producer.WriteTimeout

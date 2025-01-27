@@ -66,72 +66,7 @@ namespace :run do
 end
 
 namespace :docker do
-  namespace :run do
-    desc 'run server'
-    task :server do
-      system %{
-        docker run \
-          --env GITHUB_HMAC_SECRET=${GITHUB_HMAC_SECRET} \
-          -p 8000:8000 \
-          devchain-server:latest
-      }
-      $CHILD_STATUS&.exitstatus || 1
-    rescue Interrupt
-      0
-    end
-
-    desc 'run github consumer'
-    task :github_consumer do
-      system %{
-        docker run \
-          --env KC_TOPIC=${KC_TOPIC} \
-          devchain-gh-consumer:latest
-      }
-      $CHILD_STATUS&.exitstatus || 1
-    rescue Interrupt
-      0
-    end
-
-    desc 'run migrator'
-    task :migrator do
-      system %{
-        docker run \
-          --env DATABASE_URL=${DATABASE_URL_DOCKER_TO_HOST} \
-          devchain-migrator:latest
-      }
-      $CHILD_STATUS&.exitstatus || 1
-    rescue Interrupt
-      0
-    end
-  end
-  namespace :build do
-    desc 'build server'
-    task :server do
-      system %{ docker build -f Dockerfile.server -t devchain-server:latest . }
-      $CHILD_STATUS&.exitstatus || 1
-    rescue Interrupt
-      0
-    end
-
-    desc 'build github consumer'
-    task :github_consumer do
-      system %{ docker build -f Dockerfile.github-consumer -t devchain-gh-consumer:latest . }
-      $CHILD_STATUS&.exitstatus || 1
-    rescue Interrupt
-      0
-    end
-
-    desc 'build migrator'
-    task :migrator do
-      system %{ docker build -f Dockerfile.migrator -t devchain-migrator:latest . }
-      $CHILD_STATUS&.exitstatus || 1
-    rescue Interrupt
-      0
-    end
-  end
-
   namespace :compose do
-
     namespace :kafka do
       desc 'run the kafka and kafka-ui only'
       task :up do
@@ -309,3 +244,19 @@ end
 
 desc 'runs tests (shortcut)'
 task test: 'test:test_all'
+
+INFRA_POSTGRES_PASSWORD = ENV['POSTGRES_PASSWORD'] || nil
+namespace :psql do
+  desc 'connect to infra database with psql'
+  task :infra do
+    abort 'infra POSTGRES_PASSWORD environment variable is not set' if INFRA_POSTGRES_PASSWORD.nil?
+    system %{
+      PGPASSWORD="#{INFRA_POSTGRES_PASSWORD}" \
+      PGOPTIONS="--search_path=cauldron,public" \
+      psql -h localhost -p 5433 -U postgres -d #{DATABASE_NAME}
+    }
+    $CHILD_STATUS&.exitstatus || 1
+  rescue Interrupt
+    0
+  end
+end
