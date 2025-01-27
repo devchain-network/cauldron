@@ -7,14 +7,14 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/devchain-network/cauldron/internal/kafkacp"
-	"github.com/devchain-network/cauldron/internal/kafkacp/kafkaconsumer"
+	"github.com/devchain-network/cauldron/internal/kafkacp/kafkaconsumergroup"
 	"github.com/devchain-network/cauldron/internal/slogger"
 	"github.com/devchain-network/cauldron/internal/storage"
 	"github.com/devchain-network/cauldron/internal/storage/githubstorage"
 	"github.com/vigo/getenv"
 )
 
-func storeMessage(strg storage.PingStorer) kafkaconsumer.ProcessMessageFunc {
+func storeMessage(strg storage.PingStorer) kafkaconsumergroup.ProcessMessageFunc {
 	return func(ctx context.Context, msg *sarama.ConsumerMessage) error {
 		if err := strg.MessageStore(ctx, msg); err != nil {
 			return fmt.Errorf("message store error: [%w]", err)
@@ -24,20 +24,19 @@ func storeMessage(strg storage.PingStorer) kafkaconsumer.ProcessMessageFunc {
 	}
 }
 
-// Run runs kafa github consumer.
+// Run runs kafa github consumer group.
 func Run() error {
 	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
 	brokersList := getenv.String("KCP_BROKERS", kafkacp.DefaultKafkaBrokers)
-
 	kafkaTopic := getenv.String("KC_TOPIC_GITHUB", "")
-	kafkaPartition := getenv.Int("KC_PARTITION", kafkaconsumer.DefaultPartition)
-	kafkaDialTimeout := getenv.Duration("KC_DIAL_TIMEOUT", kafkaconsumer.DefaultDialTimeout)
-	kafkaReadTimeout := getenv.Duration("KC_READ_TIMEOUT", kafkaconsumer.DefaultReadTimeout)
-	kafkaWriteTimeout := getenv.Duration("KC_WRITE_TIMEOUT", kafkaconsumer.DefaultWriteTimeout)
-	kafkaBackoff := getenv.Duration("KC_BACKOFF", kafkaconsumer.DefaultBackoff)
-	kafkaMaxRetries := getenv.Int("KC_MAX_RETRIES", kafkaconsumer.DefaultMaxRetries)
-
+	kafkaConsumerGroup := getenv.String("KCG_NAME", "")
+	kafkaDialTimeout := getenv.Duration("KC_DIAL_TIMEOUT", kafkaconsumergroup.DefaultDialTimeout)
+	kafkaReadTimeout := getenv.Duration("KC_READ_TIMEOUT", kafkaconsumergroup.DefaultReadTimeout)
+	kafkaWriteTimeout := getenv.Duration("KC_WRITE_TIMEOUT", kafkaconsumergroup.DefaultWriteTimeout)
+	kafkaBackoff := getenv.Duration("KC_BACKOFF", kafkaconsumergroup.DefaultBackoff)
+	kafkaMaxRetries := getenv.Int("KC_MAX_RETRIES", kafkaconsumergroup.DefaultMaxRetries)
 	databaseURL := getenv.String("DATABASE_URL", "")
+
 	if err := getenv.Parse(); err != nil {
 		return fmt.Errorf("environment variable parse error: [%w]", err)
 	}
@@ -69,26 +68,26 @@ func Run() error {
 		db.Pool.Close()
 	}()
 
-	kafkaGitHubConsumer, err := kafkaconsumer.New(
-		kafkaconsumer.WithLogger(logger),
-		kafkaconsumer.WithProcessMessageFunc(storeMessage(db)),
-		kafkaconsumer.WithKafkaBrokers(*brokersList),
-		kafkaconsumer.WithDialTimeout(*kafkaDialTimeout),
-		kafkaconsumer.WithReadTimeout(*kafkaReadTimeout),
-		kafkaconsumer.WithWriteTimeout(*kafkaWriteTimeout),
-		kafkaconsumer.WithBackoff(*kafkaBackoff),
-		kafkaconsumer.WithMaxRetries(*kafkaMaxRetries),
-		kafkaconsumer.WithTopic(*kafkaTopic),
-		kafkaconsumer.WithPartition(*kafkaPartition),
+	kafkaGitHubConsumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(storeMessage(db)),
+		kafkaconsumergroup.WithKafkaBrokers(*brokersList),
+		kafkaconsumergroup.WithDialTimeout(*kafkaDialTimeout),
+		kafkaconsumergroup.WithReadTimeout(*kafkaReadTimeout),
+		kafkaconsumergroup.WithWriteTimeout(*kafkaWriteTimeout),
+		kafkaconsumergroup.WithBackoff(*kafkaBackoff),
+		kafkaconsumergroup.WithMaxRetries(*kafkaMaxRetries),
+		kafkaconsumergroup.WithTopic(*kafkaTopic),
+		kafkaconsumergroup.WithKafkaGroupName(*kafkaConsumerGroup),
 	)
 	if err != nil {
-		return fmt.Errorf("github kafka consumer instantiate error: [%w]", err)
+		return fmt.Errorf("github kafka group consumer instantiate error: [%w]", err)
 	}
 
-	defer func() { _ = kafkaGitHubConsumer.SaramaConsumer.Close() }()
+	defer func() { _ = kafkaGitHubConsumer.SaramaConsumerGroup.Close() }()
 
-	if err = kafkaGitHubConsumer.Consume(); err != nil {
-		return fmt.Errorf("github kafka consumer consume error: [%w]", err)
+	if err = kafkaGitHubConsumer.StartConsume(); err != nil {
+		return fmt.Errorf("github kafka group consumer start consume error: [%w]", err)
 	}
 
 	return nil

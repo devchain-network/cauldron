@@ -28,7 +28,10 @@ func (h Handler) Handle(ctx *fasthttp.RequestCtx) {
 
 func (h Handler) checkRequired() error {
 	if h.Version == "" {
-		return fmt.Errorf("health check handler check required, Version error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf(
+			"[healthcheckhandler.checkRequired], Version error: [%w, empty string received]",
+			cerrors.ErrValueRequired,
+		)
 	}
 
 	return nil
@@ -41,7 +44,10 @@ type Option func(*Handler) error
 func WithVersion(s string) Option {
 	return func(h *Handler) error {
 		if s == "" {
-			return fmt.Errorf("health checkhandler WithVersion error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf(
+				"[healthcheckhandler.checkRequired] WithVersion error: [%w, empty string received]",
+				cerrors.ErrValueRequired,
+			)
 		}
 		h.Version = s
 
@@ -55,7 +61,7 @@ func New(options ...Option) (*Handler, error) {
 
 	for _, option := range options {
 		if err := option(handler); err != nil {
-			return nil, fmt.Errorf("health check handler option error: [%w]", err)
+			return nil, err
 		}
 	}
 

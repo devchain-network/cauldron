@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/devchain-network/cauldron/internal/cerrors"
@@ -53,11 +54,25 @@ type Server struct {
 	IdleTimeout      time.Duration
 }
 
+func validHTTPMethods() []string {
+	return []string{
+		fasthttp.MethodGet,
+		fasthttp.MethodHead,
+		fasthttp.MethodPost,
+		fasthttp.MethodPut,
+		fasthttp.MethodPatch,
+		fasthttp.MethodDelete,
+		fasthttp.MethodConnect,
+		fasthttp.MethodOptions,
+		fasthttp.MethodTrace,
+	}
+}
+
 // Start starts the fast http server.
 func (s *Server) Start() error {
 	s.Logger.Info("start listening at", "addr", s.ListenAddr, "version", ServerVersion)
 	if err := s.FastHTTP.ListenAndServe(s.ListenAddr); err != nil {
-		return fmt.Errorf("fast http listen and serve error: [%w]", err)
+		return fmt.Errorf("[apiserver.Start][ListenAndServe] error: [%w]", err)
 	}
 
 	return nil
@@ -69,7 +84,7 @@ func (s *Server) Stop() error {
 	if err := s.FastHTTP.ShutdownWithContext(context.Background()); err != nil {
 		s.Logger.Error("fast http shutdown with context error", "error", err)
 
-		return fmt.Errorf("fast http shutdown with context error: [%w]", err)
+		return fmt.Errorf("[apiserver.Start][ShutdownWithContext] error: [%w]", err)
 	}
 
 	return nil
@@ -77,15 +92,18 @@ func (s *Server) Stop() error {
 
 func (s Server) checkRequired() error {
 	if s.Logger == nil {
-		return fmt.Errorf("api server check required, Logger error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf("[apiserver.checkRequired] Logger error: [%w, 'nil' received]", cerrors.ErrValueRequired)
 	}
 
 	if s.Handlers == nil {
-		return fmt.Errorf("api server check required, Handlers error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf("[apiserver.checkRequired] Handlers error: [%w, 'nil' received]", cerrors.ErrValueRequired)
 	}
 
 	if !s.KafkaGitHubTopic.Valid() {
-		return fmt.Errorf("api server check required, KafkaGitHubTopic error: [%w]", cerrors.ErrInvalid)
+		return fmt.Errorf(
+			"[apiserver.checkRequired] KafkaGitHubTopic error: [%w, '%s' received]",
+			cerrors.ErrInvalid, s.KafkaGitHubTopic,
+		)
 	}
 
 	return nil
@@ -95,7 +113,10 @@ func (s Server) checkRequired() error {
 func WithLogger(l *slog.Logger) Option {
 	return func(server *Server) error {
 		if l == nil {
-			return fmt.Errorf("api server WithLogger error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf(
+				"[apiserver.WithLogger] error: [%w, 'nil' received]",
+				cerrors.ErrValueRequired,
+			)
 		}
 		server.Logger = l
 
@@ -107,13 +128,30 @@ func WithLogger(l *slog.Logger) Option {
 func WithHTTPHandler(method, path string, handler fasthttp.RequestHandler) Option {
 	return func(server *Server) error {
 		if method == "" {
-			return fmt.Errorf("api server WithHTTPHandler method error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf(
+				"[apiserver.WithHTTPHandler] method error: [%w, empty string]",
+				cerrors.ErrValueRequired,
+			)
 		}
+
+		if !slices.Contains(validHTTPMethods(), method) {
+			return fmt.Errorf(
+				"[apiserver.WithHTTPHandler] method error: ['%s' is %w]",
+				method, cerrors.ErrInvalid,
+			)
+		}
+
 		if path == "" {
-			return fmt.Errorf("api server WithHTTPHandler path error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf(
+				"[apiserver.WithHTTPHandler] path error: [%w, empty string]",
+				cerrors.ErrValueRequired,
+			)
 		}
 		if handler == nil {
-			return fmt.Errorf("api server WithHTTPHandler http handler error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf(
+				"[apiserver.WithHTTPHandler] handler error: [%w, empty string]",
+				cerrors.ErrValueRequired,
+			)
 		}
 
 		if server.Handlers == nil {
@@ -129,11 +167,17 @@ func WithHTTPHandler(method, path string, handler fasthttp.RequestHandler) Optio
 func WithListenAddr(addr string) Option {
 	return func(server *Server) error {
 		if addr == "" {
-			return fmt.Errorf("api server WithListenAddr addr error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf(
+				"[apiserver.WithListenAddr] error: [%w, empty string]",
+				cerrors.ErrValueRequired,
+			)
 		}
 
 		if _, err := getenv.ValidateTCPNetworkAddress(addr); err != nil {
-			return fmt.Errorf("api server WithListenAddr tcp addr error: [%w] [%w]", err, cerrors.ErrInvalid)
+			return fmt.Errorf(
+				"[apiserver.WithListenAddr] error: [%w] ['%s' %w]",
+				err, addr, cerrors.ErrInvalid,
+			)
 		}
 
 		server.ListenAddr = addr
@@ -146,7 +190,10 @@ func WithListenAddr(addr string) Option {
 func WithReadTimeout(d time.Duration) Option {
 	return func(server *Server) error {
 		if d < 0 {
-			return fmt.Errorf("api server WithReadTimeout error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf(
+				"[apiserver.WithReadTimeout] error: [%w, '%s' received, must > 0]",
+				cerrors.ErrInvalid, d,
+			)
 		}
 
 		server.ReadTimeout = d
@@ -159,7 +206,10 @@ func WithReadTimeout(d time.Duration) Option {
 func WithWriteTimeout(d time.Duration) Option {
 	return func(server *Server) error {
 		if d < 0 {
-			return fmt.Errorf("api server WithWriteTimeout error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf(
+				"[apiserver.WithWriteTimeout] error: [%w, '%s' received, must > 0]",
+				cerrors.ErrInvalid, d,
+			)
 		}
 		server.WriteTimeout = d
 
@@ -171,7 +221,10 @@ func WithWriteTimeout(d time.Duration) Option {
 func WithIdleTimeout(d time.Duration) Option {
 	return func(server *Server) error {
 		if d < 0 {
-			return fmt.Errorf("api server WithIdleTimeout error: [%w]", cerrors.ErrInvalid)
+			return fmt.Errorf(
+				"[apiserver.WithIdleTimeout] error: [%w, '%s' received, must > 0]",
+				cerrors.ErrInvalid, d,
+			)
 		}
 		server.IdleTimeout = d
 
@@ -180,25 +233,36 @@ func WithIdleTimeout(d time.Duration) Option {
 }
 
 // WithKafkaBrokers sets kafka brokers list.
-func WithKafkaBrokers(brokers kafkacp.KafkaBrokers) Option {
+func WithKafkaBrokers(brokers string) Option {
 	return func(server *Server) error {
-		if !brokers.Valid() {
-			return fmt.Errorf("api server WithKafkaBrokers error: [%w]", cerrors.ErrInvalid)
+		var kafkaBrokers kafkacp.KafkaBrokers
+		kafkaBrokers.AddFromString(brokers)
+
+		if !kafkaBrokers.Valid() {
+			return fmt.Errorf(
+				"[apiserver.WithKafkaBrokers] error: [%w, '%s' received]",
+				cerrors.ErrInvalid, brokers,
+			)
 		}
 
-		server.KafkaBrokers = brokers
+		server.KafkaBrokers = kafkaBrokers
 
 		return nil
 	}
 }
 
 // WithKafkaGitHubTopic sets kafka topic name for github webhooks.
-func WithKafkaGitHubTopic(s kafkacp.KafkaTopicIdentifier) Option {
+func WithKafkaGitHubTopic(s string) Option {
 	return func(server *Server) error {
-		if !s.Valid() {
-			return fmt.Errorf("api server WithKafkaGitHubTopic error: [%w]", cerrors.ErrInvalid)
+		topic := kafkacp.KafkaTopicIdentifier(s)
+
+		if !topic.Valid() {
+			return fmt.Errorf(
+				"[apiserver.WithKafkaGitHubTopic] error: [%w, '%s' received]",
+				cerrors.ErrInvalid, s,
+			)
 		}
-		server.KafkaGitHubTopic = s
+		server.KafkaGitHubTopic = topic
 
 		return nil
 	}
@@ -218,7 +282,7 @@ func New(options ...Option) (*Server, error) {
 
 	for _, option := range options {
 		if err := option(server); err != nil {
-			return nil, fmt.Errorf("api server option error: [%w]", err)
+			return nil, err
 		}
 	}
 

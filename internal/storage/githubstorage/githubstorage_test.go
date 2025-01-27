@@ -3,12 +3,12 @@ package githubstorage_test
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/devchain-network/cauldron/internal/cerrors"
+	"github.com/devchain-network/cauldron/internal/slogger/mockslogger"
 	"github.com/devchain-network/cauldron/internal/storage"
 	"github.com/devchain-network/cauldron/internal/storage/githubstorage"
 	"github.com/google/uuid"
@@ -17,24 +17,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
-
-type mockLogger struct{}
-
-func (h *mockLogger) Enabled(_ context.Context, _ slog.Level) bool {
-	return true
-}
-
-func (h *mockLogger) Handle(_ context.Context, record slog.Record) error {
-	return nil
-}
-
-func (h *mockLogger) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return h
-}
-
-func (h *mockLogger) WithGroup(name string) slog.Handler {
-	return h
-}
 
 type MockPGPooler struct {
 	mock.Mock
@@ -95,7 +77,7 @@ func TestNew_NilLogger(t *testing.T) {
 }
 
 func TestNew_NoDSN(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	ctx, cancel := context.WithTimeout(context.Background(), storage.DefaultDBPingTimeout)
 	defer cancel()
@@ -110,7 +92,7 @@ func TestNew_NoDSN(t *testing.T) {
 }
 
 func TestNew_EmptyDSN(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	ctx, cancel := context.WithTimeout(context.Background(), storage.DefaultDBPingTimeout)
 	defer cancel()
@@ -126,7 +108,7 @@ func TestNew_EmptyDSN(t *testing.T) {
 }
 
 func TestNew_InvalidDSN(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	ctx, cancel := context.WithTimeout(context.Background(), storage.DefaultDBPingTimeout)
 	defer cancel()
@@ -143,7 +125,7 @@ func TestNew_InvalidDSN(t *testing.T) {
 }
 
 func TestNew_Success(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	ctx, cancel := context.WithTimeout(context.Background(), storage.DefaultDBPingTimeout)
 	defer cancel()
@@ -161,7 +143,7 @@ func TestNew_Success(t *testing.T) {
 }
 
 func TestPing_Fail(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	ctx, cancel := context.WithTimeout(context.Background(), storage.DefaultDBPingTimeout)
 	defer cancel()
@@ -188,7 +170,7 @@ func TestPing_Fail(t *testing.T) {
 }
 
 func TestPing_Success(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	ctx, cancel := context.WithTimeout(context.Background(), storage.DefaultDBPingTimeout)
 	defer cancel()
@@ -214,7 +196,7 @@ func TestPing_Success(t *testing.T) {
 }
 
 func TestStore_Fail_EmptyMessage(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	ctx, cancel := context.WithTimeout(context.Background(), storage.DefaultDBPingTimeout)
 	defer cancel()
@@ -240,7 +222,7 @@ func TestStore_Fail_EmptyMessage(t *testing.T) {
 }
 
 func TestStore_Fail_Message_InvalidTargetID(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	ctx, cancel := context.WithTimeout(context.Background(), storage.DefaultDBPingTimeout)
 	defer cancel()
@@ -276,7 +258,7 @@ func TestStore_Fail_Message_InvalidTargetID(t *testing.T) {
 }
 
 func TestStore_Fail_Message_InvalidHookID(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	ctx, cancel := context.WithTimeout(context.Background(), storage.DefaultDBPingTimeout)
 	defer cancel()
@@ -313,7 +295,7 @@ func TestStore_Fail_Message_InvalidHookID(t *testing.T) {
 }
 
 func TestStore_Fail_Message_InvalidSenderID(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	ctx, cancel := context.WithTimeout(context.Background(), storage.DefaultDBPingTimeout)
 	defer cancel()
@@ -353,7 +335,7 @@ func TestStore_Fail_Message_InvalidSenderID(t *testing.T) {
 }
 
 func TestStore_Insert_Error(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	ctx, cancel := context.WithTimeout(context.Background(), storage.DefaultDBPingTimeout)
 	defer cancel()
@@ -399,7 +381,7 @@ func TestStore_Insert_Error(t *testing.T) {
 }
 
 func TestStore_Success(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	ctx, cancel := context.WithTimeout(context.Background(), storage.DefaultDBPingTimeout)
 	defer cancel()

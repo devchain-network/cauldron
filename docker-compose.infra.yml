@@ -100,9 +100,10 @@ services:
   github-consumer:
     build:
       context: .
-      dockerfile: Dockerfile.github-consumer
+      dockerfile: Dockerfile.github-consumer-group
     environment:
-      KC_TOPIC: "github"
+      KC_TOPIC_GITHUB: "github"
+      KCG_NAME: "github-group"
       KCP_BROKERS: "kafka:9092"
       DATABASE_URL: "${DATABASE_URL_INFRA}"
     depends_on:

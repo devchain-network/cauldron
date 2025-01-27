@@ -19,10 +19,12 @@ const (
 	GitProviderBitbucket GitProvider = "bitbucket"
 )
 
-var validGitProviders = []GitProvider{
-	GitProviderGitHub,
-	GitProviderGitLab,
-	GitProviderBitbucket,
+func validGitProviders() []GitProvider {
+	return []GitProvider{
+		GitProviderGitHub,
+		GitProviderGitLab,
+		GitProviderBitbucket,
+	}
 }
 
 // PGPooler defines pgxpool behaviours.
@@ -57,7 +59,7 @@ func (g GitProvider) String() string {
 
 // Valid checks if the GitProvider is valid.
 func (g GitProvider) Valid() bool {
-	for _, provider := range validGitProviders {
+	for _, provider := range validGitProviders() {
 		if g == provider {
 			return true
 		}

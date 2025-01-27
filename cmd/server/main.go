@@ -55,12 +55,9 @@ func Run() error {
 		return fmt.Errorf("logger instantiate error: [%w]", err)
 	}
 
-	var kafkaBrokers kafkacp.KafkaBrokers
-	kafkaBrokers.AddFromString(*brokersList)
-
 	kafkaProducer, err := kafkaproducer.New(
 		kafkaproducer.WithLogger(logger),
-		kafkaproducer.WithKafkaBrokers(kafkaBrokers),
+		kafkaproducer.WithKafkaBrokers(*brokersList),
 		kafkaproducer.WithMaxRetries(*kafkaProducerMaxRetries),
 		kafkaproducer.WithBackoff(*kafkaProducerBackoff),
 		kafkaproducer.WithDialTimeout(*kafkaProducerDialTimeout),
@@ -73,7 +70,7 @@ func Run() error {
 
 	defer kafkaProducer.AsyncClose()
 
-	logger.Info("connected to kafka brokers", "addrs", kafkaBrokers)
+	logger.Info("connected to kafka brokers", "addrs", *brokersList)
 
 	githubWebhookMessageQueue := make(chan *sarama.ProducerMessage, *kafkaProducerGithubWebhookMessageQueueSize)
 
@@ -93,7 +90,7 @@ func Run() error {
 
 	githubWebhookHandler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret(*githubHMACSecret),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(githubWebhookMessageQueue),
 	)
@@ -107,8 +104,8 @@ func Run() error {
 		apiserver.WithReadTimeout(*serverReadTimeout),
 		apiserver.WithWriteTimeout(*serverWriteTimeout),
 		apiserver.WithIdleTimeout(*serverIdleTimeout),
-		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub),
-		apiserver.WithKafkaBrokers(kafkaBrokers),
+		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		apiserver.WithKafkaBrokers(*brokersList),
 		apiserver.WithHTTPHandler(fasthttp.MethodGet, "/healthz", healthCheckHandler.Handle),
 		apiserver.WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/github", githubWebhookHandler.Handle),
 	)

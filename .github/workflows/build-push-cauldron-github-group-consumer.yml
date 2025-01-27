@@ -1,4 +1,4 @@
-name: Build and push Cauldron GitHub Consumer
+name: Build and push Cauldron GitHub Group Consumer
 
 on:
   workflow_dispatch:
@@ -24,7 +24,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile.github-consumer
+          file: Dockerfile.github-consumer-group
           platforms: linux/amd64,linux/arm64
           push: true
           provenance: false

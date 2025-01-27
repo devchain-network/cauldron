@@ -16,10 +16,12 @@ const (
 	KafkaTopicIdentifierBitBucket KafkaTopicIdentifier = "bitbucket"
 )
 
-var validKafkaTopicIdentifiers = []KafkaTopicIdentifier{
-	KafkaTopicIdentifierGitHub,
-	KafkaTopicIdentifierGitLab,
-	KafkaTopicIdentifierBitBucket,
+func validKafkaTopicIdentifiers() []KafkaTopicIdentifier {
+	return []KafkaTopicIdentifier{
+		KafkaTopicIdentifierGitHub,
+		KafkaTopicIdentifierGitLab,
+		KafkaTopicIdentifierBitBucket,
+	}
 }
 
 // KafkaTopicIdentifier represents custom type for kafka topic names.
@@ -35,7 +37,7 @@ func (s KafkaTopicIdentifier) Valid() bool {
 		return false
 	}
 
-	return slices.Contains(validKafkaTopicIdentifiers, s)
+	return slices.Contains(validKafkaTopicIdentifiers(), s)
 }
 
 // TCPAddr represents tcp address as string.
