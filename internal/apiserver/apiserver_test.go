@@ -335,7 +335,7 @@ func TestServer_Start(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 
 	err = server.Stop()
 	assert.NoError(t, err)
