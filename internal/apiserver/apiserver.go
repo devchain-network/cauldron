@@ -54,16 +54,18 @@ type Server struct {
 	IdleTimeout      time.Duration
 }
 
-var validHTTPMethods = []string{
-	fasthttp.MethodGet,
-	fasthttp.MethodHead,
-	fasthttp.MethodPost,
-	fasthttp.MethodPut,
-	fasthttp.MethodPatch,
-	fasthttp.MethodDelete,
-	fasthttp.MethodConnect,
-	fasthttp.MethodOptions,
-	fasthttp.MethodTrace,
+func validHTTPMethods() []string {
+	return []string{
+		fasthttp.MethodGet,
+		fasthttp.MethodHead,
+		fasthttp.MethodPost,
+		fasthttp.MethodPut,
+		fasthttp.MethodPatch,
+		fasthttp.MethodDelete,
+		fasthttp.MethodConnect,
+		fasthttp.MethodOptions,
+		fasthttp.MethodTrace,
+	}
 }
 
 // Start starts the fast http server.
@@ -132,7 +134,7 @@ func WithHTTPHandler(method, path string, handler fasthttp.RequestHandler) Optio
 			)
 		}
 
-		if !slices.Contains(validHTTPMethods, method) {
+		if !slices.Contains(validHTTPMethods(), method) {
 			return fmt.Errorf(
 				"[apiserver.WithHTTPHandler] method error: ['%s' is %w]",
 				method, cerrors.ErrInvalid,
