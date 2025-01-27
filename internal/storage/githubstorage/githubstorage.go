@@ -63,9 +63,13 @@ func (GitHubStorage) prepareGitHubPayload(message *sarama.ConsumerMessage) (*Git
 	githubStorage.KafkaPartition = message.Partition
 	githubStorage.KafkaOffset = message.Offset
 
-	deliveryID, err := uuid.Parse(string(message.Key))
+	messageKey := string(message.Key)
+	deliveryID, err := uuid.Parse(messageKey)
 	if err != nil {
-		return nil, fmt.Errorf("githubstorage prepareGitHubPayload deliveryID error: [%w]", err)
+		return nil, fmt.Errorf(
+			"[githubstorage.prepareGitHubPayload] deliveryID error: ['%s' received, %w]",
+			messageKey, err,
+		)
 	}
 	githubStorage.DeliveryID = deliveryID
 
@@ -90,13 +94,19 @@ func (GitHubStorage) prepareGitHubPayload(message *sarama.ConsumerMessage) (*Git
 		case "target-id":
 			targetID, targetIDErr = strconv.ParseUint(value, 10, 64)
 			if targetIDErr != nil {
-				return nil, fmt.Errorf("githubstorage prepareGitHubPayload targetID error: [%w]", targetIDErr)
+				return nil, fmt.Errorf(
+					"[githubstorage.prepareGitHubPayload] targetID error: ['%s' received, %w]",
+					value, targetIDErr,
+				)
 			}
 			githubStorage.TargetID = targetID
 		case "hook-id":
 			hookID, hookIDErr = strconv.ParseUint(value, 10, 64)
 			if hookIDErr != nil {
-				return nil, fmt.Errorf("githubstorage prepareGitHubPayload hookID error: [%w]", hookIDErr)
+				return nil, fmt.Errorf(
+					"[githubstorage.prepareGitHubPayload] hookID error: ['%s' received, %w]",
+					value, hookIDErr,
+				)
 			}
 			githubStorage.HookID = hookID
 		case "sender-login":
@@ -104,7 +114,10 @@ func (GitHubStorage) prepareGitHubPayload(message *sarama.ConsumerMessage) (*Git
 		case "sender-id":
 			userID, userIDErr = strconv.ParseInt(value, 10, 64)
 			if userIDErr != nil {
-				return nil, fmt.Errorf("githubstorage prepareGitHubPayload userID error: [%w]", userIDErr)
+				return nil, fmt.Errorf(
+					"[githubstorage.prepareGitHubPayload] userID error: ['%s' received, %w]",
+					value, userIDErr,
+				)
 			}
 			githubStorage.UserID = userID
 		}
@@ -138,7 +151,7 @@ func (s GitHubStorage) Ping(ctx context.Context, maxRetries uint8, backoff time.
 	}
 
 	if pingErr != nil {
-		return fmt.Errorf("githubstorage Ping error: [%w]", pingErr)
+		return fmt.Errorf("[githubstorage.Ping] error: [%w]", pingErr)
 	}
 
 	return nil
@@ -148,7 +161,7 @@ func (s GitHubStorage) Ping(ctx context.Context, maxRetries uint8, backoff time.
 func (s GitHubStorage) MessageStore(ctx context.Context, message *sarama.ConsumerMessage) error {
 	payload, err := s.prepareGitHubPayload(message)
 	if err != nil {
-		return fmt.Errorf("githubstorage Store payload error: [%w]", err)
+		return fmt.Errorf("[githubstorage.MessageStore] payload error: [%w]", err)
 	}
 
 	_, err = s.Pool.Exec(
@@ -166,7 +179,7 @@ func (s GitHubStorage) MessageStore(ctx context.Context, message *sarama.Consume
 		payload.Payload,
 	)
 	if err != nil {
-		return fmt.Errorf("githubstorage Store Pool.Exec error: [%w]", err)
+		return fmt.Errorf("[githubstorage.MessageStore][Pool.Exec] error: [%w]", err)
 	}
 
 	return nil
@@ -174,11 +187,17 @@ func (s GitHubStorage) MessageStore(ctx context.Context, message *sarama.Consume
 
 func (s GitHubStorage) checkRequired() error {
 	if s.Logger == nil {
-		return fmt.Errorf("githubstorage check required, Logger error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf(
+			"[githubstorage.checkRequired] Logger error: [%w, 'nil' received]",
+			cerrors.ErrValueRequired,
+		)
 	}
 
 	if s.DatabaseDSN == "" {
-		return fmt.Errorf("githubstorage check required, DatabaseDSN error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf(
+			"[githubstorage.checkRequired] DatabaseDSN error: [%w, empty string received]",
+			cerrors.ErrValueRequired,
+		)
 	}
 
 	return nil
@@ -191,7 +210,10 @@ type Option func(*GitHubStorage) error
 func WithLogger(l *slog.Logger) Option {
 	return func(s *GitHubStorage) error {
 		if l == nil {
-			return fmt.Errorf("githubstorage WithLogger error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf(
+				"[githubstorage.WithLogger] error: [%w, 'nil' received]",
+				cerrors.ErrValueRequired,
+			)
 		}
 		s.Logger = l
 
@@ -203,7 +225,10 @@ func WithLogger(l *slog.Logger) Option {
 func WithDatabaseDSN(dsn string) Option {
 	return func(s *GitHubStorage) error {
 		if dsn == "" {
-			return fmt.Errorf("githubstorage WithDatabaseDSN error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf(
+				"[githubstorage.WithDatabaseDSN] error: [%w, empty string received]",
+				cerrors.ErrValueRequired,
+			)
 		}
 		s.DatabaseDSN = dsn
 
@@ -217,7 +242,7 @@ func New(ctx context.Context, options ...Option) (*GitHubStorage, error) {
 
 	for _, option := range options {
 		if err := option(githubStorage); err != nil {
-			return nil, fmt.Errorf("githubstorage option error: [%w]", err)
+			return nil, err
 		}
 	}
 
@@ -227,12 +252,12 @@ func New(ctx context.Context, options ...Option) (*GitHubStorage, error) {
 
 	config, err := pgxpool.ParseConfig(githubStorage.DatabaseDSN)
 	if err != nil {
-		return nil, fmt.Errorf("githubstorage pgxpool.ParseConfig error: [%w]", err)
+		return nil, fmt.Errorf("[githubstorage.New][pgxpool.ParseConfig] error: [%w]", err)
 	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
-		return nil, fmt.Errorf("githubstorage pgxpool.NewWithConfig error: [%w]", err)
+		return nil, fmt.Errorf("[githubstorage.New][pgxpool.NewWithConfig] error: [%w]", err)
 	}
 
 	githubStorage.Pool = pool

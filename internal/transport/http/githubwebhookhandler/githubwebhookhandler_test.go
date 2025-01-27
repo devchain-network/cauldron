@@ -1,40 +1,21 @@
 package githubwebhookhandler_test
 
 import (
-	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/devchain-network/cauldron/internal/cerrors"
 	"github.com/devchain-network/cauldron/internal/kafkacp"
+	"github.com/devchain-network/cauldron/internal/slogger/mockslogger"
 	"github.com/devchain-network/cauldron/internal/transport/http/githubwebhookhandler"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/valyala/fasthttp"
 )
-
-type mockLogger struct{}
-
-func (h *mockLogger) Enabled(_ context.Context, _ slog.Level) bool {
-	return true
-}
-
-func (h *mockLogger) Handle(_ context.Context, record slog.Record) error {
-	return nil
-}
-
-func (h *mockLogger) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return h
-}
-
-func (h *mockLogger) WithGroup(name string) slog.Handler {
-	return h
-}
 
 func TestNew_NoLogger(t *testing.T) {
 	handler, err := githubwebhookhandler.New()
@@ -53,7 +34,7 @@ func TestNew_NilLogger(t *testing.T) {
 }
 
 func TestNew_NoTopic(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
@@ -64,11 +45,11 @@ func TestNew_NoTopic(t *testing.T) {
 }
 
 func TestNew_InvalidTopic(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("foo")),
+		githubwebhookhandler.WithTopic("foo"),
 	)
 
 	assert.ErrorIs(t, err, cerrors.ErrInvalid)
@@ -76,11 +57,11 @@ func TestNew_InvalidTopic(t *testing.T) {
 }
 
 func TestNew_NoSecret(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 	)
 
 	assert.ErrorIs(t, err, cerrors.ErrValueRequired)
@@ -88,11 +69,11 @@ func TestNew_NoSecret(t *testing.T) {
 }
 
 func TestNew_EmptySecret(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret(""),
 	)
 
@@ -101,11 +82,11 @@ func TestNew_EmptySecret(t *testing.T) {
 }
 
 func TestNew_NoMessageQueue(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret("my-secret"),
 	)
 
@@ -114,11 +95,11 @@ func TestNew_NoMessageQueue(t *testing.T) {
 }
 
 func TestNew_NilMessageQueue(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret("my-secret"),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(nil),
 	)
@@ -128,12 +109,12 @@ func TestNew_NilMessageQueue(t *testing.T) {
 }
 
 func TestNew_Success(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 	messageQueue := make(chan *sarama.ProducerMessage, 10)
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret("my-secret"),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(messageQueue),
 	)
@@ -143,12 +124,12 @@ func TestNew_Success(t *testing.T) {
 }
 
 func TestHandle_NoBody(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 	messageQueue := make(chan *sarama.ProducerMessage, 10)
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret("my-secret"),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(messageQueue),
 	)
@@ -163,12 +144,12 @@ func TestHandle_NoBody(t *testing.T) {
 }
 
 func TestHandle_NoHMAC(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 	messageQueue := make(chan *sarama.ProducerMessage, 10)
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret("my-secret"),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(messageQueue),
 	)
@@ -184,12 +165,12 @@ func TestHandle_NoHMAC(t *testing.T) {
 }
 
 func TestHandle_InvalidHMAC(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 	messageQueue := make(chan *sarama.ProducerMessage, 10)
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret("my-secret"),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(messageQueue),
 	)
@@ -213,12 +194,12 @@ func newMockRequestCtx() *fasthttp.RequestCtx {
 }
 
 func TestHandle_NoXGithubEvent(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 	messageQueue := make(chan *sarama.ProducerMessage, 10)
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret("my-secret"),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(messageQueue),
 	)
@@ -253,12 +234,12 @@ func TestHandle_NoXGithubEvent(t *testing.T) {
 }
 
 func TestHandle_NoXGithubDeliveryID(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 	messageQueue := make(chan *sarama.ProducerMessage, 10)
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret("my-secret"),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(messageQueue),
 	)
@@ -294,12 +275,12 @@ func TestHandle_NoXGithubDeliveryID(t *testing.T) {
 }
 
 func TestHandle_NoXGithubHookID(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 	messageQueue := make(chan *sarama.ProducerMessage, 10)
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret("my-secret"),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(messageQueue),
 	)
@@ -336,12 +317,12 @@ func TestHandle_NoXGithubHookID(t *testing.T) {
 }
 
 func TestHandle_NoXGithubInstallationTargetID(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 	messageQueue := make(chan *sarama.ProducerMessage, 10)
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret("my-secret"),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(messageQueue),
 	)
@@ -379,12 +360,12 @@ func TestHandle_NoXGithubInstallationTargetID(t *testing.T) {
 }
 
 func TestHandle_NoXGithubInstallationTargetType(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 	messageQueue := make(chan *sarama.ProducerMessage, 10)
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret("my-secret"),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(messageQueue),
 	)
@@ -423,12 +404,12 @@ func TestHandle_NoXGithubInstallationTargetType(t *testing.T) {
 }
 
 func TestHandle_NoSenderLogin(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 	messageQueue := make(chan *sarama.ProducerMessage, 10)
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret("my-secret"),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(messageQueue),
 	)
@@ -468,12 +449,12 @@ func TestHandle_NoSenderLogin(t *testing.T) {
 }
 
 func TestHandle_NoSenderID(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 	messageQueue := make(chan *sarama.ProducerMessage, 10)
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret("my-secret"),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(messageQueue),
 	)
@@ -513,12 +494,12 @@ func TestHandle_NoSenderID(t *testing.T) {
 }
 
 func TestMessageQueue_Scenarios(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 	messageQueue := make(chan *sarama.ProducerMessage, 1)
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret("my-secret"),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(messageQueue),
 	)
@@ -554,12 +535,12 @@ func TestMessageQueue_Scenarios(t *testing.T) {
 }
 
 func TestHandle_Success(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockslogger.New()
 	messageQueue := make(chan *sarama.ProducerMessage, 10)
 
 	handler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifier("github")),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret("my-secret"),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(messageQueue),
 	)

@@ -2,7 +2,6 @@ package kafkaconsumer_test
 
 import (
 	"context"
-	"log/slog"
 	"os"
 	"sync"
 	"syscall"
@@ -28,12 +27,11 @@ func (m *mockConsumerFactory) NewConsumer(brokers []string, config *sarama.Confi
 	return args.Get(0).(sarama.Consumer), args.Error(1)
 }
 
-var (
-	mockLog            = slog.New(new(mockslogger.MockLogger))
-	mockProcessMessage = func(ctx context.Context, msg *sarama.ConsumerMessage) error {
+func mockProcessMessageFunc() kafkaconsumer.ProcessMessageFunc {
+	return func(ctx context.Context, msg *sarama.ConsumerMessage) error {
 		return nil
 	}
-)
+}
 
 func TestNew_MissingRequiredFields(t *testing.T) {
 	consumer, err := kafkaconsumer.New()
@@ -52,7 +50,7 @@ func TestNew_NilLogger(t *testing.T) {
 }
 
 func TestNew_NoProcessMessageFunc(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
@@ -63,7 +61,7 @@ func TestNew_NoProcessMessageFunc(t *testing.T) {
 }
 
 func TestNew_NilProcessMessageFunc(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
@@ -75,11 +73,11 @@ func TestNew_NilProcessMessageFunc(t *testing.T) {
 }
 
 func TestNew_EmptyTopic(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
-		kafkaconsumer.WithProcessMessageFunc(mockProcessMessage),
+		kafkaconsumer.WithProcessMessageFunc(mockProcessMessageFunc()),
 	)
 
 	assert.ErrorIs(t, err, cerrors.ErrInvalid)
@@ -87,11 +85,11 @@ func TestNew_EmptyTopic(t *testing.T) {
 }
 
 func TestNew_InvalidTopic(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
-		kafkaconsumer.WithProcessMessageFunc(mockProcessMessage),
+		kafkaconsumer.WithProcessMessageFunc(mockProcessMessageFunc()),
 		kafkaconsumer.WithTopic("invalid"),
 	)
 
@@ -100,11 +98,11 @@ func TestNew_InvalidTopic(t *testing.T) {
 }
 
 func TestNew_InvalidPartition(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
-		kafkaconsumer.WithProcessMessageFunc(mockProcessMessage),
+		kafkaconsumer.WithProcessMessageFunc(mockProcessMessageFunc()),
 		kafkaconsumer.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumer.WithPartition(2147483648),
 	)
@@ -114,11 +112,11 @@ func TestNew_InvalidPartition(t *testing.T) {
 }
 
 func TestNew_InvalidBrokers(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
-		kafkaconsumer.WithProcessMessageFunc(mockProcessMessage),
+		kafkaconsumer.WithProcessMessageFunc(mockProcessMessageFunc()),
 		kafkaconsumer.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumer.WithKafkaBrokers("invalid"),
 	)
@@ -128,11 +126,11 @@ func TestNew_InvalidBrokers(t *testing.T) {
 }
 
 func TestNew_InvalidDialTimeout(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
-		kafkaconsumer.WithProcessMessageFunc(mockProcessMessage),
+		kafkaconsumer.WithProcessMessageFunc(mockProcessMessageFunc()),
 		kafkaconsumer.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumer.WithKafkaBrokers("127.0.0.1:9094"),
 		kafkaconsumer.WithDialTimeout(-1*time.Second),
@@ -143,11 +141,11 @@ func TestNew_InvalidDialTimeout(t *testing.T) {
 }
 
 func TestNew_InvalidReadTimeout(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
-		kafkaconsumer.WithProcessMessageFunc(mockProcessMessage),
+		kafkaconsumer.WithProcessMessageFunc(mockProcessMessageFunc()),
 		kafkaconsumer.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumer.WithKafkaBrokers("127.0.0.1:9094"),
 		kafkaconsumer.WithReadTimeout(-1*time.Second),
@@ -158,11 +156,11 @@ func TestNew_InvalidReadTimeout(t *testing.T) {
 }
 
 func TestNew_InvalidWriteTimeout(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
-		kafkaconsumer.WithProcessMessageFunc(mockProcessMessage),
+		kafkaconsumer.WithProcessMessageFunc(mockProcessMessageFunc()),
 		kafkaconsumer.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumer.WithKafkaBrokers("127.0.0.1:9094"),
 		kafkaconsumer.WithWriteTimeout(-1*time.Second),
@@ -173,11 +171,11 @@ func TestNew_InvalidWriteTimeout(t *testing.T) {
 }
 
 func TestNew_ZeroBackoff(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
-		kafkaconsumer.WithProcessMessageFunc(mockProcessMessage),
+		kafkaconsumer.WithProcessMessageFunc(mockProcessMessageFunc()),
 		kafkaconsumer.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumer.WithKafkaBrokers("127.0.0.1:9094"),
 		kafkaconsumer.WithBackoff(0),
@@ -188,11 +186,11 @@ func TestNew_ZeroBackoff(t *testing.T) {
 }
 
 func TestNew_InvalidBackoff(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
-		kafkaconsumer.WithProcessMessageFunc(mockProcessMessage),
+		kafkaconsumer.WithProcessMessageFunc(mockProcessMessageFunc()),
 		kafkaconsumer.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumer.WithKafkaBrokers("127.0.0.1:9094"),
 		kafkaconsumer.WithBackoff(2*time.Minute),
@@ -203,11 +201,11 @@ func TestNew_InvalidBackoff(t *testing.T) {
 }
 
 func TestNew_InvalidMaxRetries(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
-		kafkaconsumer.WithProcessMessageFunc(mockProcessMessage),
+		kafkaconsumer.WithProcessMessageFunc(mockProcessMessageFunc()),
 		kafkaconsumer.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumer.WithKafkaBrokers("127.0.0.1:9094"),
 		kafkaconsumer.WithMaxRetries(256),
@@ -218,11 +216,11 @@ func TestNew_InvalidMaxRetries(t *testing.T) {
 }
 
 func TestNew_NilSaramaConsumerFactoryFunc(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
-		kafkaconsumer.WithProcessMessageFunc(mockProcessMessage),
+		kafkaconsumer.WithProcessMessageFunc(mockProcessMessageFunc()),
 		kafkaconsumer.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumer.WithKafkaBrokers("127.0.0.1:9094"),
 		kafkaconsumer.WithSaramaConsumerFactoryFunc(nil),
@@ -233,7 +231,7 @@ func TestNew_NilSaramaConsumerFactoryFunc(t *testing.T) {
 }
 
 func TestNew_WithSaramaConsumerFactoryFunc_Error(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	mockConfig := mocks.NewTestConfig()
 	mockSarama := mocks.NewConsumer(t, mockConfig)
@@ -243,7 +241,7 @@ func TestNew_WithSaramaConsumerFactoryFunc_Error(t *testing.T) {
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
-		kafkaconsumer.WithProcessMessageFunc(mockProcessMessage),
+		kafkaconsumer.WithProcessMessageFunc(mockProcessMessageFunc()),
 		kafkaconsumer.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumer.WithBackoff(100*time.Millisecond),
 		kafkaconsumer.WithSaramaConsumerFactoryFunc(mockFactory.NewConsumer),
@@ -258,7 +256,7 @@ func TestNew_WithSaramaConsumerFactoryFunc_Error(t *testing.T) {
 }
 
 func TestNew_WithSaramaConsumerFactoryFunc_Success(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	mockConfig := mocks.NewTestConfig()
 	mockSarama := mocks.NewConsumer(t, mockConfig)
@@ -269,7 +267,7 @@ func TestNew_WithSaramaConsumerFactoryFunc_Success(t *testing.T) {
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
-		kafkaconsumer.WithProcessMessageFunc(mockProcessMessage),
+		kafkaconsumer.WithProcessMessageFunc(mockProcessMessageFunc()),
 		kafkaconsumer.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumer.WithPartition(0),
 		kafkaconsumer.WithDialTimeout(10*time.Second),
@@ -288,7 +286,7 @@ func TestNew_WithSaramaConsumerFactoryFunc_Success(t *testing.T) {
 }
 
 func TestConsumer_Consume_Success(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	mockConfig := mocks.NewTestConfig()
 	mockSarama := mocks.NewConsumer(t, mockConfig)
@@ -305,7 +303,7 @@ func TestConsumer_Consume_Success(t *testing.T) {
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
-		kafkaconsumer.WithProcessMessageFunc(mockProcessMessage),
+		kafkaconsumer.WithProcessMessageFunc(mockProcessMessageFunc()),
 		kafkaconsumer.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumer.WithSaramaConsumerFactoryFunc(mockFactory.NewConsumer),
 		kafkaconsumer.WithMaxRetries(1),
@@ -334,7 +332,7 @@ func TestConsumer_Consume_Success(t *testing.T) {
 }
 
 func TestConsumer_Consume_PartitionConsumeError(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	mockConfig := mocks.NewTestConfig()
 	mockSarama := mocks.NewConsumer(t, mockConfig)
@@ -346,7 +344,7 @@ func TestConsumer_Consume_PartitionConsumeError(t *testing.T) {
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
-		kafkaconsumer.WithProcessMessageFunc(mockProcessMessage),
+		kafkaconsumer.WithProcessMessageFunc(mockProcessMessageFunc()),
 		kafkaconsumer.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		kafkaconsumer.WithSaramaConsumerFactoryFunc(mockFactory.NewConsumer),
 		kafkaconsumer.WithMaxRetries(1),

@@ -1,7 +1,6 @@
 package apiserver_test
 
 import (
-	"log/slog"
 	"sync"
 	"testing"
 	"time"
@@ -13,8 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/valyala/fasthttp"
 )
-
-var mockLog = slog.New(new(mockslogger.MockLogger))
 
 func TestNew_NoParams(t *testing.T) {
 	server, err := apiserver.New()
@@ -33,7 +30,7 @@ func TestNew_NilLogger(t *testing.T) {
 }
 
 func TestNew_EmptyListenAddr(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
@@ -45,7 +42,7 @@ func TestNew_EmptyListenAddr(t *testing.T) {
 }
 
 func TestNew_InvalidListenAddr(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
@@ -57,7 +54,7 @@ func TestNew_InvalidListenAddr(t *testing.T) {
 }
 
 func TestNew_InvalidKafkaTopic(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
@@ -69,7 +66,7 @@ func TestNew_InvalidKafkaTopic(t *testing.T) {
 }
 
 func TestNew_InvalidBrokers(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
@@ -81,7 +78,7 @@ func TestNew_InvalidBrokers(t *testing.T) {
 }
 
 func TestNew_InvalidReadTimeout(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
@@ -93,7 +90,7 @@ func TestNew_InvalidReadTimeout(t *testing.T) {
 }
 
 func TestNew_InvalidWriteTimeout(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
@@ -105,7 +102,7 @@ func TestNew_InvalidWriteTimeout(t *testing.T) {
 }
 
 func TestNew_InvalidIdleTimeout(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
@@ -117,7 +114,7 @@ func TestNew_InvalidIdleTimeout(t *testing.T) {
 }
 
 func TestNew_NilHTTPHandler(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
@@ -134,7 +131,7 @@ func TestNew_NilHTTPHandler(t *testing.T) {
 }
 
 func TestNew_InvalidKafkaTopic_check(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
@@ -155,7 +152,7 @@ func TestNew_InvalidKafkaTopic_check(t *testing.T) {
 }
 
 func TestNew_MissingArgsHTTPHandler_method(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
@@ -176,7 +173,7 @@ func TestNew_MissingArgsHTTPHandler_method(t *testing.T) {
 }
 
 func TestNew_InvalidArgsHTTPHandler_method(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
@@ -197,7 +194,7 @@ func TestNew_InvalidArgsHTTPHandler_method(t *testing.T) {
 }
 
 func TestNew_MissingArgsHTTPHandler_path(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
@@ -218,7 +215,7 @@ func TestNew_MissingArgsHTTPHandler_path(t *testing.T) {
 }
 
 func TestNew_MissingArgsHTTPHandler_handler(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
@@ -239,7 +236,7 @@ func TestNew_MissingArgsHTTPHandler_handler(t *testing.T) {
 }
 
 func TestHttpRouter_NotFound(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
@@ -262,7 +259,7 @@ func TestHttpRouter_NotFound(t *testing.T) {
 }
 
 func TestHttpRouter_MethodNotAllowed(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
 		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
@@ -284,7 +281,7 @@ func TestHttpRouter_MethodNotAllowed(t *testing.T) {
 }
 
 func TestHttpRouter_ValidRouteAndMethod(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
 		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
@@ -310,9 +307,10 @@ func TestHttpRouter_ValidRouteAndMethod(t *testing.T) {
 }
 
 func TestServer_Start(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 	server, err := apiserver.New(
 		apiserver.WithLogger(logger),
+		apiserver.WithListenAddr(":0"),
 		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		apiserver.WithHTTPHandler(
 			fasthttp.MethodGet,

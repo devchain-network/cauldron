@@ -1,7 +1,6 @@
 package kafkaproducer_test
 
 import (
-	"log/slog"
 	"testing"
 	"time"
 
@@ -14,8 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
-
-var mockLog = slog.New(new(mockslogger.MockLogger))
 
 type mockProducerFactory struct {
 	mock.Mock
@@ -44,7 +41,7 @@ func TestNew_NilLogger(t *testing.T) {
 }
 
 func TestNew_InvalidKafkaBrokers(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	producer, err := kafkaproducer.New(
 		kafkaproducer.WithLogger(logger),
@@ -55,7 +52,7 @@ func TestNew_InvalidKafkaBrokers(t *testing.T) {
 }
 
 func TestNew_InvalidMaxRetries(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	producer, err := kafkaproducer.New(
 		kafkaproducer.WithLogger(logger),
@@ -66,7 +63,7 @@ func TestNew_InvalidMaxRetries(t *testing.T) {
 }
 
 func TestNew_InvalidBackoff(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	producer, err := kafkaproducer.New(
 		kafkaproducer.WithLogger(logger),
@@ -77,7 +74,7 @@ func TestNew_InvalidBackoff(t *testing.T) {
 }
 
 func TestNew_InvalidDialTimeout(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	producer, err := kafkaproducer.New(
 		kafkaproducer.WithLogger(logger),
@@ -88,7 +85,7 @@ func TestNew_InvalidDialTimeout(t *testing.T) {
 }
 
 func TestNew_InvalidReadTimeout(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	producer, err := kafkaproducer.New(
 		kafkaproducer.WithLogger(logger),
@@ -99,7 +96,7 @@ func TestNew_InvalidReadTimeout(t *testing.T) {
 }
 
 func TestNew_InvalidWriteTimeout(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	producer, err := kafkaproducer.New(
 		kafkaproducer.WithLogger(logger),
@@ -110,7 +107,7 @@ func TestNew_InvalidWriteTimeout(t *testing.T) {
 }
 
 func TestNew_WithNilProducerFactoryFunc(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	producer, err := kafkaproducer.New(
 		kafkaproducer.WithLogger(logger),
@@ -121,7 +118,7 @@ func TestNew_WithNilProducerFactoryFunc(t *testing.T) {
 }
 
 func TestNew_WithSaramaProducerFactoryFunc_Error(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	mockConfig := mocks.NewTestConfig()
 	mockProducer := mocks.NewAsyncProducer(t, mockConfig)
@@ -145,7 +142,7 @@ func TestNew_WithSaramaProducerFactoryFunc_Error(t *testing.T) {
 }
 
 func TestNew_Success(t *testing.T) {
-	logger := mockLog
+	logger := mockslogger.New()
 
 	mockConfig := mocks.NewTestConfig()
 	mockProducer := mocks.NewAsyncProducer(t, mockConfig)

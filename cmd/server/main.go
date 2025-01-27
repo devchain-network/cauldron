@@ -90,7 +90,7 @@ func Run() error {
 
 	githubWebhookHandler, err := githubwebhookhandler.New(
 		githubwebhookhandler.WithLogger(logger),
-		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 		githubwebhookhandler.WithWebhookSecret(*githubHMACSecret),
 		githubwebhookhandler.WithProducerGitHubMessageQueue(githubWebhookMessageQueue),
 	)

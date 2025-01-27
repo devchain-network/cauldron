@@ -6,6 +6,8 @@ import (
 	"log/slog"
 )
 
+var _ slog.Handler = (*MockLogger)(nil) // compile time proof
+
 type MockLogger struct{}
 
 func (h *MockLogger) Enabled(_ context.Context, _ slog.Level) bool {
@@ -22,4 +24,8 @@ func (h *MockLogger) WithAttrs(_ []slog.Attr) slog.Handler {
 
 func (h *MockLogger) WithGroup(_ string) slog.Handler {
 	return h
+}
+
+func New() *slog.Logger {
+	return slog.New(new(MockLogger))
 }

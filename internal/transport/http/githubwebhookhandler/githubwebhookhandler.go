@@ -151,16 +151,28 @@ func (h Handler) Handle(ctx *fasthttp.RequestCtx) {
 
 func (h Handler) checkRequired() error {
 	if h.Logger == nil {
-		return fmt.Errorf("github webhook handler check required, Logger error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf(
+			"[githubwebhookhandler.checkRequired] Logger error: [%w, 'nil' received]",
+			cerrors.ErrValueRequired,
+		)
 	}
 	if !h.Topic.Valid() {
-		return fmt.Errorf("github webhook handler check required, Topic error: [%w]", cerrors.ErrInvalid)
+		return fmt.Errorf(
+			"[githubwebhookhandler.checkRequired] Topic error: [%w, '%s' received]",
+			cerrors.ErrInvalid, h.Topic,
+		)
 	}
 	if h.Secret == "" {
-		return fmt.Errorf("github webhook handler check required, Secret error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf(
+			"[githubwebhookhandler.checkRequired] Secret error: [%w, empty string received]",
+			cerrors.ErrValueRequired,
+		)
 	}
 	if h.MessageQueue == nil {
-		return fmt.Errorf("github webhook handler check required, MessageQueue error: [%w]", cerrors.ErrValueRequired)
+		return fmt.Errorf(
+			"[githubwebhookhandler.checkRequired] MessageQueue error: [%w, 'nil' received]",
+			cerrors.ErrValueRequired,
+		)
 	}
 
 	return nil
@@ -173,7 +185,10 @@ type Option func(*Handler) error
 func WithLogger(l *slog.Logger) Option {
 	return func(h *Handler) error {
 		if l == nil {
-			return fmt.Errorf("github webhook handler WithLogger error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf(
+				"[githubwebhookhandler.WithLogger] error: [%w, 'nil' received]",
+				cerrors.ErrValueRequired,
+			)
 		}
 		h.Logger = l
 
@@ -182,12 +197,16 @@ func WithLogger(l *slog.Logger) Option {
 }
 
 // WithTopic sets topic name to consume.
-func WithTopic(s kafkacp.KafkaTopicIdentifier) Option {
+func WithTopic(s string) Option {
 	return func(h *Handler) error {
-		if !s.Valid() {
-			return fmt.Errorf("github webhook handler WithTopic h.Topic error: [%w]", cerrors.ErrInvalid)
+		topic := kafkacp.KafkaTopicIdentifier(s)
+		if !topic.Valid() {
+			return fmt.Errorf(
+				"[githubwebhookhandler.WithTopic] error: [%w, '%s' received]",
+				cerrors.ErrInvalid, s,
+			)
 		}
-		h.Topic = s
+		h.Topic = topic
 
 		return nil
 	}
@@ -197,7 +216,10 @@ func WithTopic(s kafkacp.KafkaTopicIdentifier) Option {
 func WithWebhookSecret(s string) Option {
 	return func(h *Handler) error {
 		if s == "" {
-			return fmt.Errorf("github webhook handler WithWebhookSecret h.Secret error: [%w]", cerrors.ErrValueRequired)
+			return fmt.Errorf(
+				"[githubwebhookhandler.WithWebhookSecret] error: [%w, empty string received]",
+				cerrors.ErrValueRequired,
+			)
 		}
 
 		h.Secret = s
@@ -211,7 +233,7 @@ func WithProducerGitHubMessageQueue(mq chan *sarama.ProducerMessage) Option {
 	return func(h *Handler) error {
 		if mq == nil {
 			return fmt.Errorf(
-				"github webhook handler WithProducerGitHubMessageQueue error: [%w]",
+				"[githubwebhookhandler.WithProducerGitHubMessageQueue] error: [%w, 'nil' received]",
 				cerrors.ErrValueRequired,
 			)
 		}
@@ -227,7 +249,7 @@ func New(options ...Option) (*Handler, error) {
 
 	for _, option := range options {
 		if err := option(handler); err != nil {
-			return nil, fmt.Errorf("github webhook handler option error: [%w]", err)
+			return nil, err
 		}
 	}
 
