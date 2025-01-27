@@ -3,7 +3,7 @@
 [![codecov](https://codecov.io/github/devchain-network/cauldron/graph/badge.svg?token=LAUHZBW12F)](https://codecov.io/github/devchain-network/cauldron)
 [![Build and push Cauldron](https://github.com/devchain-network/cauldron/actions/workflows/build-push-cauldron.yml/badge.svg)](https://github.com/devchain-network/cauldron/actions/workflows/build-push-cauldron.yml)
 [![Build and push Cauldron Migrator](https://github.com/devchain-network/cauldron/actions/workflows/build-push-cauldron-migrator.yml/badge.svg)](https://github.com/devchain-network/cauldron/actions/workflows/build-push-cauldron-migrator.yml)
-[![Build and push Cauldron GitHub Consumer](https://github.com/devchain-network/cauldron/actions/workflows/build-push-cauldron-github-comsumer.yml/badge.svg)](https://github.com/devchain-network/cauldron/actions/workflows/build-push-cauldron-github-comsumer.yml)
+[![Build and push Cauldron GitHub Group Consumer](https://github.com/devchain-network/cauldron/actions/workflows/build-push-cauldron-github-group-consumer.yml/badge.svg)](https://github.com/devchain-network/cauldron/actions/workflows/build-push-cauldron-github-group-consumer.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/devchain-network/cauldron)](https://goreportcard.com/report/github.com/devchain-network/cauldron)
 
 
