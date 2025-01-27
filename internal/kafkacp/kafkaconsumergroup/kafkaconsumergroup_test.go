@@ -14,6 +14,7 @@ import (
 	"github.com/devchain-network/cauldron/internal/cerrors"
 	"github.com/devchain-network/cauldron/internal/kafkacp"
 	"github.com/devchain-network/cauldron/internal/kafkacp/kafkaconsumergroup"
+	"github.com/devchain-network/cauldron/internal/slogger/mockslogger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -21,25 +22,7 @@ import (
 var mockProcessMessage = func(ctx context.Context, msg *sarama.ConsumerMessage) error {
 	return nil
 }
-
-// mockLogger -----------------------------------------------------------------
-type mockLogger struct{}
-
-func (h *mockLogger) Enabled(_ context.Context, _ slog.Level) bool {
-	return true
-}
-
-func (h *mockLogger) Handle(_ context.Context, record slog.Record) error {
-	return nil
-}
-
-func (h *mockLogger) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return h
-}
-
-func (h *mockLogger) WithGroup(name string) slog.Handler {
-	return h
-}
+var mockLog = slog.New(new(mockslogger.MockLogger))
 
 // mockConsumerGroup ----------------------------------------------------------
 type mockConsumerGroup struct {
@@ -108,7 +91,7 @@ func TestNew_NilLogger(t *testing.T) {
 }
 
 func TestNew_NoProcessMessageFunc(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
@@ -119,7 +102,7 @@ func TestNew_NoProcessMessageFunc(t *testing.T) {
 }
 
 func TestNew_NilProcessMessageFunc(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
@@ -131,7 +114,7 @@ func TestNew_NilProcessMessageFunc(t *testing.T) {
 }
 
 func TestNew_NoGroupName(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
@@ -143,7 +126,7 @@ func TestNew_NoGroupName(t *testing.T) {
 }
 
 func TestNew_EmptyGroupName(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
@@ -156,7 +139,7 @@ func TestNew_EmptyGroupName(t *testing.T) {
 }
 
 func TestNew_NoTopic(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
@@ -169,7 +152,7 @@ func TestNew_NoTopic(t *testing.T) {
 }
 
 func TestNew_InvalidTopic(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
@@ -183,7 +166,7 @@ func TestNew_InvalidTopic(t *testing.T) {
 }
 
 func TestNew_InvalidBrokers(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
@@ -198,7 +181,7 @@ func TestNew_InvalidBrokers(t *testing.T) {
 }
 
 func TestNew_InvalidDialTimeout(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
@@ -214,7 +197,7 @@ func TestNew_InvalidDialTimeout(t *testing.T) {
 }
 
 func TestNew_InvalidReadTimeout(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
@@ -230,7 +213,7 @@ func TestNew_InvalidReadTimeout(t *testing.T) {
 }
 
 func TestNew_InvalidWriteTimeout(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
@@ -246,7 +229,7 @@ func TestNew_InvalidWriteTimeout(t *testing.T) {
 }
 
 func TestNew_ZeroBackoff(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
@@ -262,7 +245,7 @@ func TestNew_ZeroBackoff(t *testing.T) {
 }
 
 func TestNew_InvalidBackoff(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
@@ -278,7 +261,7 @@ func TestNew_InvalidBackoff(t *testing.T) {
 }
 
 func TestNew_InvalidMaxRetries(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
@@ -294,7 +277,7 @@ func TestNew_InvalidMaxRetries(t *testing.T) {
 }
 
 func TestNew_InvalidKafkaVersion(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
@@ -310,7 +293,7 @@ func TestNew_InvalidKafkaVersion(t *testing.T) {
 }
 
 func TestNew_NilSaramaConsumerGroupHandler(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
@@ -326,7 +309,7 @@ func TestNew_NilSaramaConsumerGroupHandler(t *testing.T) {
 }
 
 func TestNew_NilSaramaConsumerGroupFactoryFunc(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumergroup.New(
 		kafkaconsumergroup.WithLogger(logger),
@@ -348,7 +331,7 @@ func TestNew_NilSaramaConsumerGroupFactoryFunc(t *testing.T) {
 }
 
 func TestNew_SaramaConsumerGroupFactoryFunc_Error(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumerGroup := &mockConsumerGroup{}
 	consumerGroupFactory := &mockConsumerGroupFactory{}
@@ -376,7 +359,7 @@ func TestNew_SaramaConsumerGroupFactoryFunc_Error(t *testing.T) {
 }
 
 func TestNew_SaramaConsumerGroupFactoryFunc_Success(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumerGroup := &mockConsumerGroup{}
 	consumerGroupFactory := &mockConsumerGroupFactory{}
@@ -403,7 +386,7 @@ func TestNew_SaramaConsumerGroupFactoryFunc_Success(t *testing.T) {
 }
 
 func TestNew_Consume_Success(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumerGroup := &mockConsumerGroup{}
 	consumerGroup.On("Errors").Return((<-chan error)(make(chan error)))

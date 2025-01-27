@@ -14,6 +14,7 @@ import (
 	"github.com/devchain-network/cauldron/internal/cerrors"
 	"github.com/devchain-network/cauldron/internal/kafkacp"
 	"github.com/devchain-network/cauldron/internal/kafkacp/kafkaconsumer"
+	"github.com/devchain-network/cauldron/internal/slogger/mockslogger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -27,27 +28,12 @@ func (m *mockConsumerFactory) NewConsumer(brokers []string, config *sarama.Confi
 	return args.Get(0).(sarama.Consumer), args.Error(1)
 }
 
-type mockLogger struct{}
-
-func (h *mockLogger) Enabled(_ context.Context, _ slog.Level) bool {
-	return true
-}
-
-func (h *mockLogger) Handle(_ context.Context, record slog.Record) error {
-	return nil
-}
-
-func (h *mockLogger) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return h
-}
-
-func (h *mockLogger) WithGroup(name string) slog.Handler {
-	return h
-}
-
-var mockProcessMessage = func(ctx context.Context, msg *sarama.ConsumerMessage) error {
-	return nil
-}
+var (
+	mockLog            = slog.New(new(mockslogger.MockLogger))
+	mockProcessMessage = func(ctx context.Context, msg *sarama.ConsumerMessage) error {
+		return nil
+	}
+)
 
 func TestNew_MissingRequiredFields(t *testing.T) {
 	consumer, err := kafkaconsumer.New()
@@ -66,7 +52,7 @@ func TestNew_NilLogger(t *testing.T) {
 }
 
 func TestNew_NoProcessMessageFunc(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
@@ -77,7 +63,7 @@ func TestNew_NoProcessMessageFunc(t *testing.T) {
 }
 
 func TestNew_NilProcessMessageFunc(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
@@ -89,7 +75,7 @@ func TestNew_NilProcessMessageFunc(t *testing.T) {
 }
 
 func TestNew_EmptyTopic(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
@@ -101,7 +87,7 @@ func TestNew_EmptyTopic(t *testing.T) {
 }
 
 func TestNew_InvalidTopic(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
@@ -114,7 +100,7 @@ func TestNew_InvalidTopic(t *testing.T) {
 }
 
 func TestNew_InvalidPartition(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
@@ -128,7 +114,7 @@ func TestNew_InvalidPartition(t *testing.T) {
 }
 
 func TestNew_InvalidBrokers(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
@@ -142,7 +128,7 @@ func TestNew_InvalidBrokers(t *testing.T) {
 }
 
 func TestNew_InvalidDialTimeout(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
@@ -157,7 +143,7 @@ func TestNew_InvalidDialTimeout(t *testing.T) {
 }
 
 func TestNew_InvalidReadTimeout(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
@@ -172,7 +158,7 @@ func TestNew_InvalidReadTimeout(t *testing.T) {
 }
 
 func TestNew_InvalidWriteTimeout(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
@@ -187,7 +173,7 @@ func TestNew_InvalidWriteTimeout(t *testing.T) {
 }
 
 func TestNew_ZeroBackoff(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
@@ -202,7 +188,7 @@ func TestNew_ZeroBackoff(t *testing.T) {
 }
 
 func TestNew_InvalidBackoff(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
@@ -217,7 +203,7 @@ func TestNew_InvalidBackoff(t *testing.T) {
 }
 
 func TestNew_InvalidMaxRetries(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
@@ -232,7 +218,7 @@ func TestNew_InvalidMaxRetries(t *testing.T) {
 }
 
 func TestNew_NilSaramaConsumerFactoryFunc(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	consumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
@@ -247,7 +233,7 @@ func TestNew_NilSaramaConsumerFactoryFunc(t *testing.T) {
 }
 
 func TestNew_WithSaramaConsumerFactoryFunc_Error(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	mockConfig := mocks.NewTestConfig()
 	mockSarama := mocks.NewConsumer(t, mockConfig)
@@ -272,7 +258,7 @@ func TestNew_WithSaramaConsumerFactoryFunc_Error(t *testing.T) {
 }
 
 func TestNew_WithSaramaConsumerFactoryFunc_Success(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	mockConfig := mocks.NewTestConfig()
 	mockSarama := mocks.NewConsumer(t, mockConfig)
@@ -302,7 +288,7 @@ func TestNew_WithSaramaConsumerFactoryFunc_Success(t *testing.T) {
 }
 
 func TestConsumer_Consume_Success(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	mockConfig := mocks.NewTestConfig()
 	mockSarama := mocks.NewConsumer(t, mockConfig)
@@ -348,7 +334,7 @@ func TestConsumer_Consume_Success(t *testing.T) {
 }
 
 func TestConsumer_Consume_PartitionConsumeError(t *testing.T) {
-	logger := slog.New(new(mockLogger))
+	logger := mockLog
 
 	mockConfig := mocks.NewTestConfig()
 	mockSarama := mocks.NewConsumer(t, mockConfig)
