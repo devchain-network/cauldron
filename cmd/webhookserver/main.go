@@ -10,12 +10,12 @@ import (
 	"syscall"
 
 	"github.com/IBM/sarama"
-	"github.com/devchain-network/cauldron/internal/apiserver"
 	"github.com/devchain-network/cauldron/internal/kafkacp"
 	"github.com/devchain-network/cauldron/internal/kafkacp/kafkaproducer"
 	"github.com/devchain-network/cauldron/internal/slogger"
 	"github.com/devchain-network/cauldron/internal/transport/http/githubwebhookhandler"
 	"github.com/devchain-network/cauldron/internal/transport/http/healthcheckhandler"
+	"github.com/devchain-network/cauldron/internal/webhookserver"
 	"github.com/valyala/fasthttp"
 	"github.com/vigo/getenv"
 )
@@ -25,13 +25,13 @@ const (
 	kpGitHubDefaultQueueSize = 100
 )
 
-// Run runs the server.
+// Run runs the webhookserver.
 func Run() error {
 	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
-	listenAddr := getenv.TCPAddr("LISTEN_ADDR", apiserver.ServerDefaultListenAddr)
-	serverReadTimeout := getenv.Duration("SERVER_READ_TIMEOUT", apiserver.ServerDefaultReadTimeout)
-	serverWriteTimeout := getenv.Duration("SERVER_WRITE_TIMEOUT", apiserver.ServerDefaultWriteTimeout)
-	serverIdleTimeout := getenv.Duration("SERVER_IDLE_TIMEOUT", apiserver.ServerDefaultIdleTimeout)
+	listenAddr := getenv.TCPAddr("LISTEN_ADDR", webhookserver.ServerDefaultListenAddr)
+	serverReadTimeout := getenv.Duration("SERVER_READ_TIMEOUT", webhookserver.ServerDefaultReadTimeout)
+	serverWriteTimeout := getenv.Duration("SERVER_WRITE_TIMEOUT", webhookserver.ServerDefaultWriteTimeout)
+	serverIdleTimeout := getenv.Duration("SERVER_IDLE_TIMEOUT", webhookserver.ServerDefaultIdleTimeout)
 
 	githubHMACSecret := getenv.String("GITHUB_HMAC_SECRET", "")
 
@@ -82,7 +82,7 @@ func Run() error {
 	)
 
 	healthCheckHandler, err := healthcheckhandler.New(
-		healthcheckhandler.WithVersion(apiserver.ServerVersion),
+		healthcheckhandler.WithVersion(webhookserver.ServerVersion),
 	)
 	if err != nil {
 		return fmt.Errorf("health check http handler instantiate error: [%w]", err)
@@ -98,16 +98,16 @@ func Run() error {
 		return fmt.Errorf("github webhook http handler instantiate error: [%w]", err)
 	}
 
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithListenAddr(*listenAddr),
-		apiserver.WithReadTimeout(*serverReadTimeout),
-		apiserver.WithWriteTimeout(*serverWriteTimeout),
-		apiserver.WithIdleTimeout(*serverIdleTimeout),
-		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
-		apiserver.WithKafkaBrokers(*brokersList),
-		apiserver.WithHTTPHandler(fasthttp.MethodGet, "/healthz", healthCheckHandler.Handle),
-		apiserver.WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/github", githubWebhookHandler.Handle),
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithListenAddr(*listenAddr),
+		webhookserver.WithReadTimeout(*serverReadTimeout),
+		webhookserver.WithWriteTimeout(*serverWriteTimeout),
+		webhookserver.WithIdleTimeout(*serverIdleTimeout),
+		webhookserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		webhookserver.WithKafkaBrokers(*brokersList),
+		webhookserver.WithHTTPHandler(fasthttp.MethodGet, "/healthz", healthCheckHandler.Handle),
+		webhookserver.WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/github", githubWebhookHandler.Handle),
 	)
 	if err != nil {
 		return fmt.Errorf("api server instantiate error: [%w]", err)
@@ -154,19 +154,19 @@ func Run() error {
 		<-sig
 
 		if errStop := server.Stop(); err != nil {
-			logger.Error("api server stop error: [%w]", "error", errStop)
+			logger.Error("webhookserver stop error: [%w]", "error", errStop)
 		}
 		close(githubWebhookMessageQueue)
 		close(doneChannel)
 	}()
 
 	if errStop := server.Start(); err != nil {
-		return fmt.Errorf("api server start error: [%w]", errStop)
+		return fmt.Errorf("webhookserver start error: [%w]", errStop)
 	}
 
 	<-doneChannel
 	wg.Wait()
-	logger.Info("terminating api server, all clear")
+	logger.Info("terminating webhookserver, all clear")
 
 	return nil
 }

@@ -1,28 +1,28 @@
-package apiserver_test
+package webhookserver_test
 
 import (
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/devchain-network/cauldron/internal/apiserver"
 	"github.com/devchain-network/cauldron/internal/cerrors"
 	"github.com/devchain-network/cauldron/internal/kafkacp"
 	"github.com/devchain-network/cauldron/internal/slogger/mockslogger"
+	"github.com/devchain-network/cauldron/internal/webhookserver"
 	"github.com/stretchr/testify/assert"
 	"github.com/valyala/fasthttp"
 )
 
 func TestNew_NoParams(t *testing.T) {
-	server, err := apiserver.New()
+	server, err := webhookserver.New()
 
 	assert.ErrorIs(t, err, cerrors.ErrValueRequired)
 	assert.Nil(t, server)
 }
 
 func TestNew_NilLogger(t *testing.T) {
-	server, err := apiserver.New(
-		apiserver.WithLogger(nil),
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(nil),
 	)
 
 	assert.ErrorIs(t, err, cerrors.ErrValueRequired)
@@ -32,9 +32,9 @@ func TestNew_NilLogger(t *testing.T) {
 func TestNew_EmptyListenAddr(t *testing.T) {
 	logger := mockslogger.New()
 
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithListenAddr(""),
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithListenAddr(""),
 	)
 
 	assert.ErrorIs(t, err, cerrors.ErrValueRequired)
@@ -44,9 +44,9 @@ func TestNew_EmptyListenAddr(t *testing.T) {
 func TestNew_InvalidListenAddr(t *testing.T) {
 	logger := mockslogger.New()
 
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithListenAddr("invalid"),
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithListenAddr("invalid"),
 	)
 
 	assert.ErrorIs(t, err, cerrors.ErrInvalid)
@@ -56,9 +56,9 @@ func TestNew_InvalidListenAddr(t *testing.T) {
 func TestNew_InvalidKafkaTopic(t *testing.T) {
 	logger := mockslogger.New()
 
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithKafkaGitHubTopic("foo"),
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithKafkaGitHubTopic("foo"),
 	)
 
 	assert.ErrorIs(t, err, cerrors.ErrInvalid)
@@ -68,9 +68,9 @@ func TestNew_InvalidKafkaTopic(t *testing.T) {
 func TestNew_InvalidBrokers(t *testing.T) {
 	logger := mockslogger.New()
 
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithKafkaBrokers("foo"),
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithKafkaBrokers("foo"),
 	)
 
 	assert.ErrorIs(t, err, cerrors.ErrInvalid)
@@ -80,9 +80,9 @@ func TestNew_InvalidBrokers(t *testing.T) {
 func TestNew_InvalidReadTimeout(t *testing.T) {
 	logger := mockslogger.New()
 
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithReadTimeout(-1*time.Second),
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithReadTimeout(-1*time.Second),
 	)
 
 	assert.ErrorIs(t, err, cerrors.ErrInvalid)
@@ -92,9 +92,9 @@ func TestNew_InvalidReadTimeout(t *testing.T) {
 func TestNew_InvalidWriteTimeout(t *testing.T) {
 	logger := mockslogger.New()
 
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithWriteTimeout(-1*time.Second),
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithWriteTimeout(-1*time.Second),
 	)
 
 	assert.ErrorIs(t, err, cerrors.ErrInvalid)
@@ -104,9 +104,9 @@ func TestNew_InvalidWriteTimeout(t *testing.T) {
 func TestNew_InvalidIdleTimeout(t *testing.T) {
 	logger := mockslogger.New()
 
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithIdleTimeout(-1*time.Second),
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithIdleTimeout(-1*time.Second),
 	)
 
 	assert.ErrorIs(t, err, cerrors.ErrInvalid)
@@ -116,14 +116,14 @@ func TestNew_InvalidIdleTimeout(t *testing.T) {
 func TestNew_NilHTTPHandler(t *testing.T) {
 	logger := mockslogger.New()
 
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithListenAddr(":9000"),
-		apiserver.WithReadTimeout(5*time.Second),
-		apiserver.WithWriteTimeout(5*time.Second),
-		apiserver.WithIdleTimeout(5*time.Second),
-		apiserver.WithKafkaBrokers("localhost:9194"),
-		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithListenAddr(":9000"),
+		webhookserver.WithReadTimeout(5*time.Second),
+		webhookserver.WithWriteTimeout(5*time.Second),
+		webhookserver.WithIdleTimeout(5*time.Second),
+		webhookserver.WithKafkaBrokers("localhost:9194"),
+		webhookserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
 	)
 
 	assert.ErrorIs(t, err, cerrors.ErrValueRequired)
@@ -133,14 +133,14 @@ func TestNew_NilHTTPHandler(t *testing.T) {
 func TestNew_InvalidKafkaTopic_check(t *testing.T) {
 	logger := mockslogger.New()
 
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithListenAddr(":9000"),
-		apiserver.WithReadTimeout(5*time.Second),
-		apiserver.WithWriteTimeout(5*time.Second),
-		apiserver.WithIdleTimeout(5*time.Second),
-		apiserver.WithKafkaBrokers("localhost:9194"),
-		apiserver.WithHTTPHandler(
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithListenAddr(":9000"),
+		webhookserver.WithReadTimeout(5*time.Second),
+		webhookserver.WithWriteTimeout(5*time.Second),
+		webhookserver.WithIdleTimeout(5*time.Second),
+		webhookserver.WithKafkaBrokers("localhost:9194"),
+		webhookserver.WithHTTPHandler(
 			fasthttp.MethodGet,
 			"/test",
 			func(ctx *fasthttp.RequestCtx) { ctx.SetStatusCode(fasthttp.StatusOK) },
@@ -154,14 +154,14 @@ func TestNew_InvalidKafkaTopic_check(t *testing.T) {
 func TestNew_MissingArgsHTTPHandler_method(t *testing.T) {
 	logger := mockslogger.New()
 
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithListenAddr(":9000"),
-		apiserver.WithReadTimeout(5*time.Second),
-		apiserver.WithWriteTimeout(5*time.Second),
-		apiserver.WithIdleTimeout(5*time.Second),
-		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
-		apiserver.WithHTTPHandler(
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithListenAddr(":9000"),
+		webhookserver.WithReadTimeout(5*time.Second),
+		webhookserver.WithWriteTimeout(5*time.Second),
+		webhookserver.WithIdleTimeout(5*time.Second),
+		webhookserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		webhookserver.WithHTTPHandler(
 			"",
 			"/test",
 			func(ctx *fasthttp.RequestCtx) { ctx.SetStatusCode(fasthttp.StatusOK) },
@@ -175,14 +175,14 @@ func TestNew_MissingArgsHTTPHandler_method(t *testing.T) {
 func TestNew_InvalidArgsHTTPHandler_method(t *testing.T) {
 	logger := mockslogger.New()
 
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithListenAddr(":9000"),
-		apiserver.WithReadTimeout(5*time.Second),
-		apiserver.WithWriteTimeout(5*time.Second),
-		apiserver.WithIdleTimeout(5*time.Second),
-		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
-		apiserver.WithHTTPHandler(
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithListenAddr(":9000"),
+		webhookserver.WithReadTimeout(5*time.Second),
+		webhookserver.WithWriteTimeout(5*time.Second),
+		webhookserver.WithIdleTimeout(5*time.Second),
+		webhookserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		webhookserver.WithHTTPHandler(
 			"FOO",
 			"/test",
 			func(ctx *fasthttp.RequestCtx) { ctx.SetStatusCode(fasthttp.StatusOK) },
@@ -196,14 +196,14 @@ func TestNew_InvalidArgsHTTPHandler_method(t *testing.T) {
 func TestNew_MissingArgsHTTPHandler_path(t *testing.T) {
 	logger := mockslogger.New()
 
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithListenAddr(":9000"),
-		apiserver.WithReadTimeout(5*time.Second),
-		apiserver.WithWriteTimeout(5*time.Second),
-		apiserver.WithIdleTimeout(5*time.Second),
-		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
-		apiserver.WithHTTPHandler(
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithListenAddr(":9000"),
+		webhookserver.WithReadTimeout(5*time.Second),
+		webhookserver.WithWriteTimeout(5*time.Second),
+		webhookserver.WithIdleTimeout(5*time.Second),
+		webhookserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		webhookserver.WithHTTPHandler(
 			fasthttp.MethodGet,
 			"",
 			func(ctx *fasthttp.RequestCtx) { ctx.SetStatusCode(fasthttp.StatusOK) },
@@ -217,14 +217,14 @@ func TestNew_MissingArgsHTTPHandler_path(t *testing.T) {
 func TestNew_MissingArgsHTTPHandler_handler(t *testing.T) {
 	logger := mockslogger.New()
 
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithListenAddr(":9000"),
-		apiserver.WithReadTimeout(5*time.Second),
-		apiserver.WithWriteTimeout(5*time.Second),
-		apiserver.WithIdleTimeout(5*time.Second),
-		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
-		apiserver.WithHTTPHandler(
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithListenAddr(":9000"),
+		webhookserver.WithReadTimeout(5*time.Second),
+		webhookserver.WithWriteTimeout(5*time.Second),
+		webhookserver.WithIdleTimeout(5*time.Second),
+		webhookserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		webhookserver.WithHTTPHandler(
 			fasthttp.MethodGet,
 			"/test",
 			nil,
@@ -238,10 +238,10 @@ func TestNew_MissingArgsHTTPHandler_handler(t *testing.T) {
 func TestHttpRouter_NotFound(t *testing.T) {
 	logger := mockslogger.New()
 
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
-		apiserver.WithHTTPHandler(
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		webhookserver.WithHTTPHandler(
 			fasthttp.MethodGet,
 			"/existing-path",
 			func(ctx *fasthttp.RequestCtx) { ctx.SetStatusCode(fasthttp.StatusOK) },
@@ -260,10 +260,10 @@ func TestHttpRouter_NotFound(t *testing.T) {
 
 func TestHttpRouter_MethodNotAllowed(t *testing.T) {
 	logger := mockslogger.New()
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
-		apiserver.WithHTTPHandler(
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		webhookserver.WithHTTPHandler(
 			fasthttp.MethodGet,
 			"/existing-path",
 			func(ctx *fasthttp.RequestCtx) { ctx.SetStatusCode(fasthttp.StatusOK) },
@@ -282,10 +282,10 @@ func TestHttpRouter_MethodNotAllowed(t *testing.T) {
 
 func TestHttpRouter_ValidRouteAndMethod(t *testing.T) {
 	logger := mockslogger.New()
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
-		apiserver.WithHTTPHandler(
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		webhookserver.WithHTTPHandler(
 			fasthttp.MethodGet,
 			"/existing-path",
 			func(ctx *fasthttp.RequestCtx) {
@@ -308,11 +308,11 @@ func TestHttpRouter_ValidRouteAndMethod(t *testing.T) {
 
 func TestServer_Start(t *testing.T) {
 	logger := mockslogger.New()
-	server, err := apiserver.New(
-		apiserver.WithLogger(logger),
-		apiserver.WithListenAddr(":0"),
-		apiserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
-		apiserver.WithHTTPHandler(
+	server, err := webhookserver.New(
+		webhookserver.WithLogger(logger),
+		webhookserver.WithListenAddr(":0"),
+		webhookserver.WithKafkaGitHubTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		webhookserver.WithHTTPHandler(
 			fasthttp.MethodGet,
 			"/existing-path",
 			func(ctx *fasthttp.RequestCtx) {
