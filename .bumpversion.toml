@@ -23,4 +23,4 @@ post_commit_hooks = []
 filename = "README.md"
 
 [[tool.bumpversion.files]]
-filename = "internal/apiserver/VERSION"
+filename = "internal/webhookserver/VERSION"
