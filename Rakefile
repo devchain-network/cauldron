@@ -18,13 +18,13 @@ task :has_golangci_linter do
   Rake::Task['command_exists'].invoke('golangci-lint')
 end
 
-desc 'default task, runs server'
-task default: ['run:server']
+desc 'default task, runs webhookserver'
+task default: ['run:webhookserver']
 
 namespace :run do
-  desc 'run server'
-  task :server do
-    run = %{ go run -race cmd/server/main.go }
+  desc 'run webhookserver'
+  task :webhookserver do
+    run = %{ go run -race cmd/webhookserver/main.go }
     pid = Process.spawn(run)
     Process.wait(pid)
     $CHILD_STATUS&.exitstatus || 1

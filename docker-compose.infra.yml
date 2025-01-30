@@ -86,7 +86,7 @@ services:
   cauldron:
     build:
       context: .
-      dockerfile: Dockerfile.server
+      dockerfile: Dockerfile.webhookserver
     ports:
       - "8000:8000"
     environment:

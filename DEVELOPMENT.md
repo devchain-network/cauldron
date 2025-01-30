@@ -135,10 +135,10 @@ Example `.envrc`:
 # for ruby/rake only
 export PATH="bin:${PATH}"
 
-# shared with api server, kafka consumer, producer
+# shared with api webhookserver, kafka consumer, producer
 export LOG_LEVEL="INFO"
 
-# cauldron server (api server)
+# webhookserver
 export LISTEN_ADDR=":8000"
 export GITHUB_HMAC_SECRET="<secret>"
 
@@ -223,7 +223,7 @@ rake db:migrate:goto[index]           # go to migration
 rake db:migrate:up                    # run migrate up
 rake db:psql                          # connect local db with psql
 rake db:reset                         # reset database (drop and create)
-rake default                          # default task, runs server
+rake default                          # default task, runs webhookserver
 rake docker:compose:infra:down        # stop the infra with all components
 rake docker:compose:infra:up          # run the infra with all components
 rake docker:compose:kafka:down        # stop the kafka and kafka-ui only
@@ -234,7 +234,7 @@ rake rubocop:autofix                  # lint ruby and autofix
 rake rubocop:lint                     # lint ruby
 rake run:kafka:github:consumer        # run kafka github consumer
 rake run:kafka:github:consumer_group  # run kafka github consumer group
-rake run:server                       # run server
+rake run:webhookserver                # run webhookserver
 rake test                             # runs tests (shortcut)
 rake test:coverage                    # run tests and show coverage
 ```
@@ -308,8 +308,8 @@ tabs.
 rake docker:compose:kafka:up                     # kicks kafka + kafka ui in tab 1
 docker compose -f docker-compose.kafka.yml up    # or use this w/o rake.
 
-rake                                # kicks webhook server in tab 2.
-go run cmd/server/main.go           # or use this w/o rake.
+rake                                # kicks webhookserver in tab 2.
+go run cmd/webhookserver/main.go    # or use this w/o rake.
 
 rake run:kafka:github:consumer      # kicks github consumer in tab 3
 go run cmd/githubconsumer/main.go   # or use this w/o rake.
@@ -319,7 +319,7 @@ ngrok http --url=<url-url>.ngrok-free.app 8000 # run ngrok in tab 4
 
 Set `https://<url-url>.ngrok-free.app` webhook url on your GitHub repo or
 GitHub organization. Don’t forget to set your webhook secret as `GITHUB_HMAC_SECRET`
-before kicking webhook server (tab 2).
+before kicking webhookserver (tab 2).
 
 Now, do some action on your GitHub repository and let the service do it’s thing!
 
@@ -329,7 +329,7 @@ Now, do some action on your GitHub repository and let the service do it’s thin
 rake -T "^run:"
 
 rake run:kafka:github:consumer   # run kafka github consumer
-rake run:server                  # run server
+rake run:webhookserver           # run webhookserver
 ```
 
 ### Linter Tasks
