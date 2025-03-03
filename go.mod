@@ -3,7 +3,7 @@ module github.com/devchain-network/cauldron
 go 1.23.4
 
 require (
-	github.com/IBM/sarama v1.45.0
+	github.com/IBM/sarama v1.45.1
 	github.com/buger/jsonparser v1.1.1
 	github.com/golang-migrate/migrate/v4 v4.18.2
 	github.com/google/uuid v1.6.0
