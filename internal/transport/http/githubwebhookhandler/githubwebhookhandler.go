@@ -19,6 +19,11 @@ import (
 
 var _ GitHubWebhookHandler = (*Handler)(nil) // compile time proof
 
+const (
+	missingHTTPHandlerHeaderText   = "header"
+	missingHTTPHandlerErrorMessage = "missing http header"
+)
+
 // GitHubWebhookHandler defines http handler behaviours.
 type GitHubWebhookHandler interface {
 	httphandler.FastHTTPHandler
@@ -57,7 +62,7 @@ func (h Handler) Handle(ctx *fasthttp.RequestCtx) {
 
 	githubEvent := ctx.Request.Header.Peek("X-Github-Event")
 	if len(githubEvent) == 0 {
-		h.Logger.Error("missing http header", "header", "X-Github-Event")
+		h.Logger.Error(missingHTTPHandlerErrorMessage, missingHTTPHandlerHeaderText, "X-Github-Event")
 		ctx.SetStatusCode(fasthttp.StatusBadRequest)
 
 		return
@@ -65,7 +70,7 @@ func (h Handler) Handle(ctx *fasthttp.RequestCtx) {
 
 	githubDelivery := ctx.Request.Header.Peek("X-Github-Delivery")
 	if len(githubDelivery) == 0 {
-		h.Logger.Error("missing http header", "header", "X-Github-Delivery")
+		h.Logger.Error(missingHTTPHandlerErrorMessage, missingHTTPHandlerHeaderText, "X-Github-Delivery")
 		ctx.SetStatusCode(fasthttp.StatusBadRequest)
 
 		return
@@ -73,7 +78,7 @@ func (h Handler) Handle(ctx *fasthttp.RequestCtx) {
 
 	githubHookID := ctx.Request.Header.Peek("X-Github-Hook-Id")
 	if len(githubHookID) == 0 {
-		h.Logger.Error("missing http header", "header", "X-Github-Hook-Id")
+		h.Logger.Error(missingHTTPHandlerErrorMessage, missingHTTPHandlerHeaderText, "X-Github-Hook-Id")
 		ctx.SetStatusCode(fasthttp.StatusBadRequest)
 
 		return
@@ -81,7 +86,11 @@ func (h Handler) Handle(ctx *fasthttp.RequestCtx) {
 
 	githubHookInstallationTargetID := ctx.Request.Header.Peek("X-Github-Hook-Installation-Target-Id")
 	if len(githubHookInstallationTargetID) == 0 {
-		h.Logger.Error("missing http header", "header", "X-Github-Hook-Installation-Target-Id")
+		h.Logger.Error(
+			missingHTTPHandlerErrorMessage,
+			missingHTTPHandlerHeaderText,
+			"X-Github-Hook-Installation-Target-Id",
+		)
 		ctx.SetStatusCode(fasthttp.StatusBadRequest)
 
 		return
@@ -89,7 +98,11 @@ func (h Handler) Handle(ctx *fasthttp.RequestCtx) {
 
 	githubHookInstallationTargetType := ctx.Request.Header.Peek("X-Github-Hook-Installation-Target-Type")
 	if len(githubHookInstallationTargetType) == 0 {
-		h.Logger.Error("missing http header", "header", "X-Github-Hook-Installation-Target-Type")
+		h.Logger.Error(
+			missingHTTPHandlerErrorMessage,
+			missingHTTPHandlerHeaderText,
+			"X-Github-Hook-Installation-Target-Type",
+		)
 		ctx.SetStatusCode(fasthttp.StatusBadRequest)
 
 		return
