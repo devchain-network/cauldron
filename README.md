@@ -1,4 +1,4 @@
-![Version](https://img.shields.io/badge/version-0.1.7-orange.svg)
+![Version](https://img.shields.io/badge/version-0.2.0-orange.svg)
 ![Go](https://img.shields.io/github/go-mod/go-version/devchain-network/cauldron)
 [![codecov](https://codecov.io/github/devchain-network/cauldron/graph/badge.svg?token=LAUHZBW12F)](https://codecov.io/github/devchain-network/cauldron)
 [![Build and push Cauldron Webhook Server](https://github.com/devchain-network/cauldron/actions/workflows/build-push-cauldron-webhookserver.yml/badge.svg)](https://github.com/devchain-network/cauldron/actions/workflows/build-push-cauldron-webhookserver.yml)
