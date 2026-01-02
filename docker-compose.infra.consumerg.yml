@@ -97,10 +97,10 @@ services:
     networks:
       - devchain-network
 
-  github-consumer:
+  github-consumer-group:
     build:
       context: .
-      dockerfile: Dockerfile.github-consumer
+      dockerfile: Dockerfile.github-consumer-group
     environment:
       KC_TOPIC_GITHUB: "github"
       KCG_NAME: "github-group"

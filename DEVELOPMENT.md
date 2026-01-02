@@ -410,6 +410,31 @@ local PostgreSQL instance. Use `rake psql:infra` to connect your infra database.
 Logging for **kafka** and **kafka-ui** is set to `error` only. Due to development
 purposes, both were producing too much information, little clean up required.
 
+If you are on a mac and using orbstack, goto: https://orb.local/
+
+- kafka.cauldron.orb.local
+- postgresql-db.cauldron.orb.local -> you can access the db with `rake psql:infra`
+- kafka-ui.cauldron.orb.local -> Your messages;
+  https://kafka-ui.cauldron.orb.local/ui/clusters/devchain/all-topics/github/messages?keySerde=String&valueSerde=String&limit=100
+- ngrok.cauldron.orb.local -> monitor incoming webhooks
+- cauldron.cauldron.orb.local -> https://cauldron.cauldron.orb.local/healthz (from orb)
+
+Check health from your local shell, use **http**:
+
+```bash
+curl http://cauldron.cauldron.orb.local/healthz
+```
+
+test the github
+webooks on a real github repo, add webhook on you repo settings;
+
+https://github.com/{user}/{repo}/settings/hooks
+
+- Payload URL: https://{your-ngrok}.app/v1/webhook/github
+- Content Type: `application/json`
+- Secret: Your `${GITHUB_HMAC_SECRET}` value
+- Check: **Send me everything**
+
 ---
 
 [001]: https://brew.sh/
