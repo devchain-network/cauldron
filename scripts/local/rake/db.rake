@@ -3,6 +3,12 @@
 require 'English'
 
 namespace :db do
+  desc 'add new migration'
+  task :add_new_migration, [:name] => %i[pg_running has_go_migrate] do |_, args|
+    abort 'migration name required' if args.name.nil?
+    system %{ migrate create -ext sql -dir "migrations" -seq "#{args.name}" }
+  end
+
   desc 'runs rake db:migrate up (shortcut)'
   task migrate: 'migrate:up'
 

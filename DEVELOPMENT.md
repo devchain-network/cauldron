@@ -216,6 +216,7 @@ of `rake tasks`:
 ```bash
 rake -T
 
+rake db:add_new_migration[name]       # add new migration
 rake db:init                          # init database
 rake db:migrate                       # runs rake db:migrate up (shortcut)
 rake db:migrate:down                  # run migrate down
@@ -287,6 +288,12 @@ If you want to add new tables or make change, use:
 
 ```bash
 migrate create -ext sql -dir "migrations" -seq <name>
+```
+
+or;
+
+```bash
+rake db:add_new_migration[name_of_your_migration]
 ```
 
 Appy:
