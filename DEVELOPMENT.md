@@ -10,7 +10,7 @@ To run, test, or develop on your local machine, it's recommended to install
 the following requirements. A Docker Compose file is also provided, which
 includes all the necessary services.
 
-- `go` - current version: `1.23.4`
+- `go` - current version: `1.25.5`
 - `postgresql` - version `16` or higher
 - `pre-commit` - optional, use `pre-commit install` if you plan to contribute!
 - `direnv` - optional, recommended, manages your environment variables over `.envrc`
@@ -228,10 +228,10 @@ rake docker:compose:infra:down        # stop the infra with all components
 rake docker:compose:infra:up          # run the infra with all components
 rake docker:compose:kafka:down        # stop the kafka and kafka-ui only
 rake docker:compose:kafka:up          # run the kafka and kafka-ui only
-rake lint                             # run golang-ci linter
+rake lint:go                          # run golang-ci linter
+rake lint:ruby                        # lint ruby
+rake lint:ruby:autofix                # lint ruby and autofix
 rake psql:infra                       # connect to infra database with psql
-rake rubocop:autofix                  # lint ruby and autofix
-rake rubocop:lint                     # lint ruby
 rake run:kafka:github:consumer        # run kafka github consumer
 rake run:kafka:github:consumer_group  # run kafka github consumer group
 rake run:webhookserver                # run webhookserver
@@ -328,18 +328,19 @@ Now, do some action on your GitHub repository and let the service do it’s thin
 ```bash
 rake -T "^run:"
 
-rake run:kafka:github:consumer   # run kafka github consumer
-rake run:webhookserver           # run webhookserver
+rake run:kafka:github:consumer        # run kafka github consumer
+rake run:kafka:github:consumer_group  # run kafka github consumer group
+rake run:webhookserver                # run webhookserver
 ```
 
 ### Linter Tasks
 
 ```bash
-rake -T "lint|rubo"
+rake -T "lint:"
 
-rake lint              # runs golang-ci linter
-rake rubocop:lint      # lints ruby code
-rake rubocop:autofix   # lints ruby code and auto fixes.
+rake lint:go            # run golang-ci linter
+rake lint:ruby          # lint ruby
+rake lint:ruby:autofix  # lint ruby and autofix
 ```
 
 ### Docker Tasks
