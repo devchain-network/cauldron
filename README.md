@@ -9,7 +9,7 @@
 
 # cauldron
 
-A dynamic hub where incoming webhooks brew, process, and transform seamlessly.
+A dynamic hub where incoming **webhooks** brew, process, and transform seamlessly.
 
 More information will be provided soon.
 
