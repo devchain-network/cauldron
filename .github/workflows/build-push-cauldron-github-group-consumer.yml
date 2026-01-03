@@ -1,4 +1,4 @@
-name: Build and push Cauldron GitHub Group Consumer
+name: GitHub Group Consumer (build-push)
 
 on:
   workflow_dispatch:

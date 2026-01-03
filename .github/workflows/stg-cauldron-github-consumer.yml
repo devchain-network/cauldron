@@ -1,4 +1,4 @@
-name: Staging - Build and push Cauldron GitHub Consumer
+name: Staging - GitHub Consumer (build-push)
 
 on:
   workflow_dispatch:
