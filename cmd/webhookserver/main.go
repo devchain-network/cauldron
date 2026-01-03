@@ -14,6 +14,7 @@ import (
 	"github.com/devchain-network/cauldron/internal/kafkacp/kafkaproducer"
 	"github.com/devchain-network/cauldron/internal/slogger"
 	"github.com/devchain-network/cauldron/internal/transport/http/githubwebhookhandler"
+	"github.com/devchain-network/cauldron/internal/transport/http/gitlabwebhookhandler"
 	"github.com/devchain-network/cauldron/internal/transport/http/healthcheckhandler"
 	"github.com/devchain-network/cauldron/internal/webhookserver"
 	"github.com/valyala/fasthttp"
@@ -23,6 +24,7 @@ import (
 // default values.
 const (
 	kpGitHubDefaultQueueSize = 100
+	kpGitLabDefaultQueueSize = 100
 )
 
 // Run runs the webhookserver.
@@ -34,6 +36,7 @@ func Run() error {
 	serverIdleTimeout := getenv.Duration("SERVER_IDLE_TIMEOUT", webhookserver.ServerDefaultIdleTimeout)
 
 	githubHMACSecret := getenv.String("GITHUB_HMAC_SECRET", "")
+	gitlabHMACSecret := getenv.String("GITLAB_HMAC_SECRET", "")
 
 	brokersList := getenv.String("KCP_BROKERS", kafkacp.DefaultKafkaBrokers)
 
@@ -43,6 +46,7 @@ func Run() error {
 	kafkaProducerBackoff := getenv.Duration("KP_BACKOFF", kafkaproducer.DefaultBackoff)
 	kafkaProducerMaxRetries := getenv.Int("KP_MAX_RETRIES", kafkaproducer.DefaultMaxRetries)
 	kafkaProducerGithubWebhookMessageQueueSize := getenv.Int("KP_GITHUB_MESSAGE_QUEUE_SIZE", kpGitHubDefaultQueueSize)
+	kafkaProducerGitlabWebhookMessageQueueSize := getenv.Int("KP_GITLAB_MESSAGE_QUEUE_SIZE", kpGitLabDefaultQueueSize)
 
 	if err := getenv.Parse(); err != nil {
 		return fmt.Errorf("environment variable parse error: [%w]", err)
@@ -73,12 +77,14 @@ func Run() error {
 	logger.Info("connected to kafka brokers", "addrs", *brokersList)
 
 	githubWebhookMessageQueue := make(chan *sarama.ProducerMessage, *kafkaProducerGithubWebhookMessageQueueSize)
+	gitlabWebhookMessageQueue := make(chan *sarama.ProducerMessage, *kafkaProducerGitlabWebhookMessageQueueSize)
 
 	numMessageWorkers := runtime.NumCPU()
 	logger.Info(
 		"number of message workers",
 		"count", numMessageWorkers,
 		"github webhook message queue size", *kafkaProducerGithubWebhookMessageQueueSize,
+		"gitlab webhook message queue size", *kafkaProducerGitlabWebhookMessageQueueSize,
 	)
 
 	healthCheckHandler, err := healthcheckhandler.New(
@@ -98,6 +104,16 @@ func Run() error {
 		return fmt.Errorf("github webhook http handler instantiate error: [%w]", err)
 	}
 
+	gitlabWebhookHandler, err := gitlabwebhookhandler.New(
+		gitlabwebhookhandler.WithLogger(logger),
+		gitlabwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitLab.String()),
+		gitlabwebhookhandler.WithWebhookSecret(*gitlabHMACSecret),
+		gitlabwebhookhandler.WithProducerGitLabMessageQueue(gitlabWebhookMessageQueue),
+	)
+	if err != nil {
+		return fmt.Errorf("gitlab webhook http handler instantiate error: [%w]", err)
+	}
+
 	server, err := webhookserver.New(
 		webhookserver.WithLogger(logger),
 		webhookserver.WithListenAddr(*listenAddr),
@@ -108,6 +124,7 @@ func Run() error {
 		webhookserver.WithKafkaBrokers(*brokersList),
 		webhookserver.WithHTTPHandler(fasthttp.MethodGet, "/healthz", healthCheckHandler.Handle),
 		webhookserver.WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/github", githubWebhookHandler.Handle),
+		webhookserver.WithHTTPHandler(fasthttp.MethodPost, "/v1/webhook/gitlab", gitlabWebhookHandler.Handle),
 	)
 	if err != nil {
 		return fmt.Errorf("api server instantiate error: [%w]", err)
@@ -117,16 +134,47 @@ func Run() error {
 
 	var wg sync.WaitGroup
 
+	// GitHub message workers
 	for i := range numMessageWorkers {
 		wg.Add(1)
 		go func() {
 			defer func() {
 				wg.Done()
-				logger.Info("terminating worker", "id", i)
+				logger.Info("terminating github worker", "id", i)
 			}()
 
 			func() {
 				for msg := range githubWebhookMessageQueue {
+					kafkaProducer.Input() <- msg
+
+					select {
+					case success := <-kafkaProducer.Successes():
+						logger.Info(
+							"message sent",
+							"worker", i,
+							"topic", success.Topic,
+							"partition", success.Partition,
+							"offset", success.Offset,
+						)
+					case err := <-kafkaProducer.Errors():
+						logger.Error("message send error", "error", err)
+					}
+				}
+			}()
+		}()
+	}
+
+	// GitLab message workers
+	for i := range numMessageWorkers {
+		wg.Add(1)
+		go func() {
+			defer func() {
+				wg.Done()
+				logger.Info("terminating gitlab worker", "id", i)
+			}()
+
+			func() {
+				for msg := range gitlabWebhookMessageQueue {
 					kafkaProducer.Input() <- msg
 
 					select {
@@ -157,6 +205,7 @@ func Run() error {
 			logger.Error("webhookserver stop error: [%w]", "error", errStop)
 		}
 		close(githubWebhookMessageQueue)
+		close(gitlabWebhookMessageQueue)
 		close(doneChannel)
 	}()
 

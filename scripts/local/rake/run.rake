@@ -32,5 +32,17 @@ namespace :run do
       end
 
     end
+
+    namespace :gitlab do
+
+      desc 'run kafka gitlab consumer'
+      task :consumer do
+        system %{ go run -race cmd/gitlabconsumer/main.go }
+        exit($CHILD_STATUS&.exitstatus || 1) unless ENV['RAKE_CONTINUE']
+      rescue Interrupt
+        exit(0)
+      end
+
+    end
   end
 end

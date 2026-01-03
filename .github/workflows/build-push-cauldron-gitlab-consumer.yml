@@ -1,4 +1,4 @@
-name: Staging - Cauldron (build-push)
+name: GitLab Consumer (build-push)
 
 on:
   workflow_dispatch:
@@ -24,10 +24,10 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile.webhookserver
+          file: Dockerfile.gitlab-consumer
           platforms: linux/amd64
           push: true
           provenance: false
-          tags: ghcr.io/${{ github.repository }}/cauldron-stg-webhook-server:latest
+          tags: ghcr.io/${{ github.repository }}/cauldron-gitlab-consumer:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max

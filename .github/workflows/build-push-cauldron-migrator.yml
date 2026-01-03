@@ -1,4 +1,4 @@
-name: Build and push Cauldron Migrator
+name: Migrator (build-push)
 
 on:
   workflow_dispatch:

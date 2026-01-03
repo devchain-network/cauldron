@@ -10,7 +10,7 @@ import (
 	"github.com/devchain-network/cauldron/internal/kafkacp/kafkaconsumer"
 	"github.com/devchain-network/cauldron/internal/slogger"
 	"github.com/devchain-network/cauldron/internal/storage"
-	"github.com/devchain-network/cauldron/internal/storage/githubstorage"
+	"github.com/devchain-network/cauldron/internal/storage/gitlabstorage"
 	"github.com/vigo/getenv"
 )
 
@@ -24,12 +24,12 @@ func storeMessage(strg storage.PingStorer) kafkaconsumer.ProcessMessageFunc {
 	}
 }
 
-// Run runs kafka github consumer.
+// Run runs kafka gitlab consumer.
 func Run() error {
 	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
 	brokersList := getenv.String("KCP_BROKERS", kafkacp.DefaultKafkaBrokers)
 
-	kafkaTopic := getenv.String("KC_TOPIC_GITHUB", "")
+	kafkaTopic := getenv.String("KC_TOPIC_GITLAB", "")
 	kafkaPartition := getenv.Int("KC_PARTITION", kafkaconsumer.DefaultPartition)
 	kafkaDialTimeout := getenv.Duration("KC_DIAL_TIMEOUT", kafkaconsumer.DefaultDialTimeout)
 	kafkaReadTimeout := getenv.Duration("KC_READ_TIMEOUT", kafkaconsumer.DefaultReadTimeout)
@@ -52,24 +52,24 @@ func Run() error {
 	ctx, cancel := context.WithTimeout(context.Background(), storage.DefaultDBPingTimeout)
 	defer cancel()
 
-	db, err := githubstorage.New(
+	db, err := gitlabstorage.New(
 		ctx,
-		githubstorage.WithDatabaseDSN(*databaseURL),
-		githubstorage.WithLogger(logger),
+		gitlabstorage.WithDatabaseDSN(*databaseURL),
+		gitlabstorage.WithLogger(logger),
 	)
 	if err != nil {
-		return fmt.Errorf("github storage instantiate error: [%w]", err)
+		return fmt.Errorf("gitlab storage instantiate error: [%w]", err)
 	}
 
 	if err = db.Ping(ctx, storage.DefaultDBPingMaxRetries, storage.DefaultDBPingBackoff); err != nil {
-		return fmt.Errorf("github storage ping error: [%w]", err)
+		return fmt.Errorf("gitlab storage ping error: [%w]", err)
 	}
 	defer func() {
-		logger.Info("github storage - closing pgx pool")
+		logger.Info("gitlab storage - closing pgx pool")
 		db.Pool.Close()
 	}()
 
-	kafkaGitHubConsumer, err := kafkaconsumer.New(
+	kafkaGitLabConsumer, err := kafkaconsumer.New(
 		kafkaconsumer.WithLogger(logger),
 		kafkaconsumer.WithProcessMessageFunc(storeMessage(db)),
 		kafkaconsumer.WithKafkaBrokers(*brokersList),
@@ -82,13 +82,13 @@ func Run() error {
 		kafkaconsumer.WithPartition(*kafkaPartition),
 	)
 	if err != nil {
-		return fmt.Errorf("github kafka consumer instantiate error: [%w]", err)
+		return fmt.Errorf("gitlab kafka consumer instantiate error: [%w]", err)
 	}
 
-	defer func() { _ = kafkaGitHubConsumer.SaramaConsumer.Close() }()
+	defer func() { _ = kafkaGitLabConsumer.SaramaConsumer.Close() }()
 
-	if err = kafkaGitHubConsumer.Consume(); err != nil {
-		return fmt.Errorf("github kafka consumer consume error: [%w]", err)
+	if err = kafkaGitLabConsumer.Consume(); err != nil {
+		return fmt.Errorf("gitlab kafka consumer consume error: [%w]", err)
 	}
 
 	return nil
