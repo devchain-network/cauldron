@@ -323,7 +323,7 @@ func TestHandle_Success_ObjectKind(t *testing.T) {
 
 	handler.Handle(ctx)
 
-	assert.Equal(t, fasthttp.StatusAccepted, ctx.Response.StatusCode())
+	assert.Equal(t, fasthttp.StatusOK, ctx.Response.StatusCode())
 	assert.NotEmpty(t, <-messageQueue)
 }
 
@@ -356,7 +356,7 @@ func TestHandle_Success_EventName(t *testing.T) {
 
 	handler.Handle(ctx)
 
-	assert.Equal(t, fasthttp.StatusAccepted, ctx.Response.StatusCode())
+	assert.Equal(t, fasthttp.StatusOK, ctx.Response.StatusCode())
 	assert.NotEmpty(t, <-messageQueue)
 }
 
@@ -391,7 +391,7 @@ func TestHandle_Success_PushEvent_FlatUser(t *testing.T) {
 
 	handler.Handle(ctx)
 
-	assert.Equal(t, fasthttp.StatusAccepted, ctx.Response.StatusCode())
+	assert.Equal(t, fasthttp.StatusOK, ctx.Response.StatusCode())
 	msg := <-messageQueue
 	assert.NotNil(t, msg)
 	assert.Equal(t, string(msg.Value.(sarama.ByteEncoder)), body)
@@ -428,7 +428,7 @@ func TestHandle_Success_UserAddToGroup(t *testing.T) {
 
 	handler.Handle(ctx)
 
-	assert.Equal(t, fasthttp.StatusAccepted, ctx.Response.StatusCode())
+	assert.Equal(t, fasthttp.StatusOK, ctx.Response.StatusCode())
 	assert.NotEmpty(t, <-messageQueue)
 }
 
@@ -461,7 +461,7 @@ func TestHandle_Success_SubgroupCreate(t *testing.T) {
 
 	handler.Handle(ctx)
 
-	assert.Equal(t, fasthttp.StatusAccepted, ctx.Response.StatusCode())
+	assert.Equal(t, fasthttp.StatusOK, ctx.Response.StatusCode())
 	assert.NotEmpty(t, <-messageQueue)
 }
 
@@ -497,5 +497,5 @@ func TestMessageQueue_Full(t *testing.T) {
 	// Wait a bit for goroutine to execute default case (queue full)
 	time.Sleep(50 * time.Millisecond)
 
-	assert.Equal(t, fasthttp.StatusAccepted, ctx.Response.StatusCode())
+	assert.Equal(t, fasthttp.StatusOK, ctx.Response.StatusCode())
 }

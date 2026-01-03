@@ -154,7 +154,7 @@ func (h Handler) Handle(ctx *fasthttp.RequestCtx) {
 	}()
 
 	h.Logger.Info("gitlab webhook received successfully")
-	ctx.SetStatusCode(fasthttp.StatusAccepted)
+	ctx.SetStatusCode(fasthttp.StatusOK)
 }
 
 func (h Handler) checkRequired() error {
