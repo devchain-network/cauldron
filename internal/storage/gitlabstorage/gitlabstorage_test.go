@@ -508,7 +508,94 @@ func TestStore_Success_SkipsEmptyProjectID(t *testing.T) {
 			{Key: []byte("webhook-uuid"), Value: []byte(webhookUUID.String())},
 			{Key: []byte("object-kind"), Value: []byte(`push`)},
 			{Key: []byte("project-id"), Value: []byte(``)}, // empty, should skip
+		},
+	}
+
+	err = db.MessageStore(ctx, message)
+	assert.NoError(t, err)
+	mockPool.AssertExpectations(t)
+}
+
+func TestStore_Success_SkipsZeroProjectID(t *testing.T) {
+	logger := mockslogger.New()
+
+	ctx, cancel := context.WithTimeout(context.Background(), storage.DefaultDBPingTimeout)
+	defer cancel()
+
+	mockPool := new(MockPGPooler)
+	mockPool.On("Exec",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+	).Return(pgconn.CommandTag{}, nil)
+
+	db, err := gitlabstorage.New(
+		ctx,
+		gitlabstorage.WithLogger(logger),
+		gitlabstorage.WithDatabaseDSN(
+			"postgres://foo:bar@localhost:5432/fake?sslmode=disable",
+		),
+	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, db)
+	db.Pool = mockPool
+
+	uuidKey := uuid.New()
+	webhookUUID := uuid.New()
+
+	message := &sarama.ConsumerMessage{
+		Topic: "gitlab",
+		Key:   []byte(uuidKey.String()),
+		Value: []byte(`{"hello": "world"}`),
+		Headers: []*sarama.RecordHeader{
+			{Key: []byte("webhook-uuid"), Value: []byte(webhookUUID.String())},
+			{Key: []byte("object-kind"), Value: []byte(`push`)},
 			{Key: []byte("project-id"), Value: []byte(`0`)}, // zero, should skip
+		},
+	}
+
+	err = db.MessageStore(ctx, message)
+	assert.NoError(t, err)
+	mockPool.AssertExpectations(t)
+}
+
+func TestStore_Success_SkipsZeroUserID(t *testing.T) {
+	logger := mockslogger.New()
+
+	ctx, cancel := context.WithTimeout(context.Background(), storage.DefaultDBPingTimeout)
+	defer cancel()
+
+	mockPool := new(MockPGPooler)
+	mockPool.On("Exec",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+	).Return(pgconn.CommandTag{}, nil)
+
+	db, err := gitlabstorage.New(
+		ctx,
+		gitlabstorage.WithLogger(logger),
+		gitlabstorage.WithDatabaseDSN(
+			"postgres://foo:bar@localhost:5432/fake?sslmode=disable",
+		),
+	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, db)
+	db.Pool = mockPool
+
+	uuidKey := uuid.New()
+	webhookUUID := uuid.New()
+
+	message := &sarama.ConsumerMessage{
+		Topic: "gitlab",
+		Key:   []byte(uuidKey.String()),
+		Value: []byte(`{"hello": "world"}`),
+		Headers: []*sarama.RecordHeader{
+			{Key: []byte("webhook-uuid"), Value: []byte(webhookUUID.String())},
+			{Key: []byte("object-kind"), Value: []byte(`push`)},
+			{Key: []byte("user-id"), Value: []byte(`0`)}, // zero, should skip
 		},
 	}
 
