@@ -91,6 +91,7 @@ services:
       - "8000:8000"
     environment:
       GITHUB_HMAC_SECRET: "${GITHUB_HMAC_SECRET}"
+      GITLAB_HMAC_SECRET: "${GITLAB_HMAC_SECRET}"
       KCP_BROKERS: "kafka:9092"
     depends_on:
       - kafka
@@ -104,6 +105,23 @@ services:
     environment:
       KC_TOPIC_GITHUB: "github"
       KCG_NAME: "github-group"
+      KCP_BROKERS: "kafka:9092"
+      DATABASE_URL: "${DATABASE_URL_INFRA}"
+    depends_on:
+      - kafka
+      - cauldron
+      - postgresql_db
+      - migrator
+    networks:
+      - devchain-network
+
+  gitlab-consumer-group:
+    build:
+      context: .
+      dockerfile: Dockerfile.gitlab-consumer-group
+    environment:
+      KC_TOPIC_GITLAB: "gitlab"
+      KCG_NAME: "gitlab-group"
       KCP_BROKERS: "kafka:9092"
       DATABASE_URL: "${DATABASE_URL_INFRA}"
     depends_on:
