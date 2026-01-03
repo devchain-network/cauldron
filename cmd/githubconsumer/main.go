@@ -24,7 +24,7 @@ func storeMessage(strg storage.PingStorer) kafkaconsumer.ProcessMessageFunc {
 	}
 }
 
-// Run runs kafa github consumer.
+// Run runs kafka github consumer.
 func Run() error {
 	logLevel := getenv.String("LOG_LEVEL", slogger.DefaultLogLevel)
 	brokersList := getenv.String("KCP_BROKERS", kafkacp.DefaultKafkaBrokers)
