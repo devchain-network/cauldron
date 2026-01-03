@@ -1,4 +1,4 @@
-name: Build and push Cauldron GitHub Group Consumer
+name: Staging - Build and push Cauldron GitHub Consumer
 
 on:
   workflow_dispatch:
@@ -24,10 +24,10 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile.github-consumer-group
+          file: Dockerfile.github-consumer
           platforms: linux/amd64
           push: true
           provenance: false
-          tags: ghcr.io/${{ github.repository }}/cauldron-github-consumer-group:latest
+          tags: ghcr.io/${{ github.repository }}/cauldron-stg-github-consumer:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
