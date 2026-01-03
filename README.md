@@ -1,4 +1,4 @@
-![Version](https://img.shields.io/badge/version-0.3.0-orange.svg)
+![Version](https://img.shields.io/badge/version-0.3.1-orange.svg)
 ![Go](https://img.shields.io/github/go-mod/go-version/devchain-network/cauldron)
 [![codecov](https://codecov.io/github/devchain-network/cauldron/graph/badge.svg?token=LAUHZBW12F)](https://codecov.io/github/devchain-network/cauldron)
 [![Go Report Card](https://goreportcard.com/badge/github.com/devchain-network/cauldron)](https://goreportcard.com/report/github.com/devchain-network/cauldron)
