@@ -10,7 +10,7 @@ require (
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/stretchr/testify v1.11.1
 	github.com/valyala/fasthttp v1.68.0
-	github.com/vigo/getenv v0.0.2
+	github.com/vigo/getenv v0.1.0
 )
 
 require (
