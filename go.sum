@@ -120,8 +120,8 @@ github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6Kllzaw
 github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyCJ6HpOuEn7z0Csc=
 github.com/valyala/fasthttp v1.68.0 h1:v12Nx16iepr8r9ySOwqI+5RBJ/DqTxhOy1HrHoDFnok=
 github.com/valyala/fasthttp v1.68.0/go.mod h1:5EXiRfYQAoiO/khu4oU9VISC/eVY6JqmSpPJoHCKsz4=
-github.com/vigo/getenv v0.0.2 h1:twosl/znO1+er4seKrBB2Hd1IwEGZPVcofdNUZJ/UtE=
-github.com/vigo/getenv v0.0.2/go.mod h1:qMPqXpDiIkgR+nknu2YGhMXWIBYPzBG6tHdC7UrlJC0=
+github.com/vigo/getenv v0.1.0 h1:xs0qTTPVNMyHdJ423AKFM74oP+v155VFoxe3cfV2ugQ=
+github.com/vigo/getenv v0.1.0/go.mod h1:LxRF1Jd218qJRyAqi33V+csYgWR2FUHAsuj4gyOlvK0=
 github.com/xyproto/randomstring v1.0.5 h1:YtlWPoRdgMu3NZtP45drfy1GKoojuR7hmRcnhZqKjWU=
 github.com/xyproto/randomstring v1.0.5/go.mod h1:rgmS5DeNXLivK7YprL0pY+lTuhNQW3iGxZ18UQApw/E=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
