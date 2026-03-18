@@ -4,13 +4,13 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
 
 	"github.com/IBM/sarama"
-	"github.com/buger/jsonparser"
 	"github.com/devchain-network/cauldron/internal/cerrors"
 	"github.com/devchain-network/cauldron/internal/kafkacp"
 	"github.com/devchain-network/cauldron/internal/transport/http/httphandler"
@@ -108,16 +108,31 @@ func (h Handler) Handle(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	senderLogin, err := jsonparser.GetString(ctx.PostBody(), "sender", "login")
-	if err != nil {
-		h.Logger.Error("senderLogin jsonparser.GetString error", "error", err)
+	var payload struct {
+		Sender struct {
+			Login string `json:"login"`
+			ID    int64  `json:"id"`
+		} `json:"sender"`
+	}
+
+	if err := json.Unmarshal(ctx.PostBody(), &payload); err != nil {
+		h.Logger.Error("json.Unmarshal error", "error", err)
 		ctx.SetStatusCode(fasthttp.StatusBadRequest)
 
 		return
 	}
-	senderID, err := jsonparser.GetInt(ctx.PostBody(), "sender", "id")
-	if err != nil {
-		h.Logger.Error("senderID jsonparser.GetInt error", "error", err)
+
+	senderLogin := payload.Sender.Login
+	if senderLogin == "" {
+		h.Logger.Error("sender login not found in payload")
+		ctx.SetStatusCode(fasthttp.StatusBadRequest)
+
+		return
+	}
+
+	senderID := payload.Sender.ID
+	if senderID == 0 {
+		h.Logger.Error("sender id not found in payload")
 		ctx.SetStatusCode(fasthttp.StatusBadRequest)
 
 		return

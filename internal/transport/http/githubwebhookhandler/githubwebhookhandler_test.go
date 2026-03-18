@@ -524,14 +524,15 @@ func TestMessageQueue_Scenarios(t *testing.T) {
 
 	handler.Handle(ctx)
 
-	go func() {
-		msg := <-messageQueue
+	assert.Equal(t, fasthttp.StatusAccepted, ctx.Response.StatusCode())
+
+	select {
+	case msg := <-messageQueue:
 		assert.NotNil(t, msg)
 		assert.Equal(t, string(msg.Value.(sarama.ByteEncoder)), body)
-	}()
-
-	assert.Equal(t, fasthttp.StatusAccepted, ctx.Response.StatusCode())
-	assert.NotEmpty(t, <-messageQueue)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for message in queue")
+	}
 }
 
 func TestHandle_Success(t *testing.T) {
