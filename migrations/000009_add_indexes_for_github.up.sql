@@ -5,6 +5,3 @@ CREATE INDEX IF NOT EXISTS "idx_github_created_at" ON "cauldron"."github" (creat
 -- Composite index for event + date range filtering
 -- Used in: most common query pattern (WHERE event = 'X' AND created_at >= $1)
 CREATE INDEX IF NOT EXISTS "idx_github_event_created_at" ON "cauldron"."github" (event, created_at);
-
-CREATE INDEX IF NOT EXISTS "idx_gitlab_created_at" ON "cauldron"."gitlab" (created_at);
-CREATE INDEX IF NOT EXISTS "idx_gitlab_event_created_at" ON "cauldron"."gitlab" (object_kind, created_at);
