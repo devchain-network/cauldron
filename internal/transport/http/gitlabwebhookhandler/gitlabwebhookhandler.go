@@ -1,12 +1,12 @@
 package gitlabwebhookhandler
 
 import (
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strconv"
 
 	"github.com/IBM/sarama"
-	"github.com/buger/jsonparser"
 	"github.com/devchain-network/cauldron/internal/cerrors"
 	"github.com/devchain-network/cauldron/internal/kafkacp"
 	"github.com/devchain-network/cauldron/internal/transport/http/httphandler"
@@ -67,49 +67,71 @@ func (h Handler) Handle(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
+	var payload struct {
+		ObjectKind        string `json:"object_kind"`
+		EventName         string `json:"event_name"`
+		ProjectID         int64  `json:"project_id"`
+		PathWithNamespace string `json:"path_with_namespace"`
+		FullPath          string `json:"full_path"`
+		GroupPath         string `json:"group_path"`
+		UserID            int64  `json:"user_id"`
+		UserUsername      string `json:"user_username"`
+		Project           struct {
+			ID                int64  `json:"id"`
+			PathWithNamespace string `json:"path_with_namespace"`
+		} `json:"project"`
+		User struct {
+			ID       int64  `json:"id"`
+			Username string `json:"username"`
+		} `json:"user"`
+	}
+
+	if err := json.Unmarshal(ctx.PostBody(), &payload); err != nil {
+		h.Logger.Error("json.Unmarshal error", "error", err)
+		ctx.SetStatusCode(fasthttp.StatusBadRequest)
+
+		return
+	}
+
 	// object_kind or event_name - one of them is required
-	objectKind, err := jsonparser.GetString(ctx.PostBody(), "object_kind")
-	if err != nil {
-		// fallback to event_name for premium/ultimate hooks (group, project, subgroup events)
-		objectKind, err = jsonparser.GetString(ctx.PostBody(), "event_name")
-		if err != nil {
-			h.Logger.Error("objectKind/eventName jsonparser.GetString error", "error", err)
-			ctx.SetStatusCode(fasthttp.StatusBadRequest)
+	objectKind := payload.ObjectKind
+	if objectKind == "" {
+		objectKind = payload.EventName
+	}
+	if objectKind == "" {
+		h.Logger.Error("objectKind/eventName not found in payload")
+		ctx.SetStatusCode(fasthttp.StatusBadRequest)
 
-			return
-		}
+		return
 	}
 
-	// project.id - try nested first, fallback to top-level (for premium events like project_create)
-	projectID, err := jsonparser.GetInt(ctx.PostBody(), "project", "id")
-	if err != nil {
-		projectID, _ = jsonparser.GetInt(ctx.PostBody(), "project_id")
+	// project.id - try nested first, fallback to top-level
+	projectID := payload.Project.ID
+	if projectID == 0 {
+		projectID = payload.ProjectID
 	}
 
-	// project.path_with_namespace - try nested first, fallback for premium events
-	projectPath, err := jsonparser.GetString(ctx.PostBody(), "project", "path_with_namespace")
-	if err != nil {
-		// try top-level path_with_namespace (project_create)
-		projectPath, err = jsonparser.GetString(ctx.PostBody(), "path_with_namespace")
-		if err != nil {
-			// try full_path (subgroup_create)
-			projectPath, err = jsonparser.GetString(ctx.PostBody(), "full_path")
-			if err != nil {
-				// try group_path (user_add_to_group)
-				projectPath, _ = jsonparser.GetString(ctx.PostBody(), "group_path")
-			}
-		}
+	// project.path_with_namespace - try nested first, then fallbacks
+	projectPath := payload.Project.PathWithNamespace
+	if projectPath == "" {
+		projectPath = payload.PathWithNamespace
+	}
+	if projectPath == "" {
+		projectPath = payload.FullPath
+	}
+	if projectPath == "" {
+		projectPath = payload.GroupPath
 	}
 
-	// user info - try nested first (user.id, user.username), fallback to flat (user_id, user_username)
-	userID, err := jsonparser.GetInt(ctx.PostBody(), "user", "id")
-	if err != nil {
-		userID, _ = jsonparser.GetInt(ctx.PostBody(), "user_id")
+	// user info - try nested first, fallback to flat
+	userID := payload.User.ID
+	if userID == 0 {
+		userID = payload.UserID
 	}
 
-	userUsername, err := jsonparser.GetString(ctx.PostBody(), "user", "username")
-	if err != nil {
-		userUsername, _ = jsonparser.GetString(ctx.PostBody(), "user_username")
+	userUsername := payload.User.Username
+	if userUsername == "" {
+		userUsername = payload.UserUsername
 	}
 
 	h.Logger.Info("received gitlab webhook",

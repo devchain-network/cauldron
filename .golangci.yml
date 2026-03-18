@@ -139,6 +139,8 @@ linters:
                   - utils
                   - tools
                   - models
+        - name: nested-structs
+          disabled: true
 
 formatters:
   enable:

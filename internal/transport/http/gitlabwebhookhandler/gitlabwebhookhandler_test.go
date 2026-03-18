@@ -259,6 +259,31 @@ func TestHandle_NoWebhookUUID(t *testing.T) {
 	<-done
 }
 
+func TestHandle_InvalidJSON(t *testing.T) {
+	logger := mockslogger.New()
+	messageQueue := make(chan *sarama.ProducerMessage, 10)
+
+	handler, err := gitlabwebhookhandler.New(
+		gitlabwebhookhandler.WithLogger(logger),
+		gitlabwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitLab.String()),
+		gitlabwebhookhandler.WithWebhookSecret("my-secret"),
+		gitlabwebhookhandler.WithProducerGitLabMessageQueue(messageQueue),
+	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, handler)
+
+	ctx := newMockRequestCtx()
+	ctx.Request.SetBodyString(`{invalid json`)
+	ctx.Request.Header.Set("X-Gitlab-Token", "my-secret")
+	ctx.Request.Header.Set("X-Gitlab-Event-Uuid", uuid.New().String())
+	ctx.Request.Header.Set("X-Gitlab-Webhook-Uuid", uuid.New().String())
+
+	handler.Handle(ctx)
+
+	assert.Equal(t, fasthttp.StatusBadRequest, ctx.Response.StatusCode())
+}
+
 func TestHandle_NoObjectKindOrEventName(t *testing.T) {
 	logger := mockslogger.New()
 	messageQueue := make(chan *sarama.ProducerMessage, 10)
