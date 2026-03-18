@@ -1,5 +1,3 @@
-BEGIN;
-
 --
 -- Create "gitlab" table
 --
@@ -30,5 +28,3 @@ CREATE INDEX "idx_gitlab_project_path" ON "cauldron"."gitlab" (project_path) WHE
 CREATE INDEX "idx_gitlab_user_username" ON "cauldron"."gitlab" (user_username) WHERE user_username IS NOT NULL;
 CREATE INDEX "idx_gitlab_user_id" ON "cauldron"."gitlab" (user_id) WHERE user_id IS NOT NULL;
 CREATE INDEX "idx_gitlab_payload" ON "cauldron"."gitlab" USING gin (payload);
-
-COMMIT;
