@@ -186,6 +186,40 @@ func TestHandle_InvalidHMAC(t *testing.T) {
 	assert.Equal(t, fasthttp.StatusBadRequest, ctx.Response.StatusCode())
 }
 
+func TestHandle_InvalidJSON(t *testing.T) {
+	logger := mockslogger.New()
+	messageQueue := make(chan *sarama.ProducerMessage, 10)
+
+	handler, err := githubwebhookhandler.New(
+		githubwebhookhandler.WithLogger(logger),
+		githubwebhookhandler.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		githubwebhookhandler.WithWebhookSecret("my-secret"),
+		githubwebhookhandler.WithProducerGitHubMessageQueue(messageQueue),
+	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, handler)
+
+	secret := "my-secret"
+	body := `{invalid json`
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(body))
+	signature := "sha256=" + hex.EncodeToString(mac.Sum(nil))
+
+	ctx := newMockRequestCtx()
+	ctx.Request.SetBodyString(body)
+	ctx.Request.Header.Set("X-Hub-Signature-256", signature)
+	ctx.Request.Header.Set("X-Github-Event", "push")
+	ctx.Request.Header.Set("X-Github-Delivery", uuid.New().String())
+	ctx.Request.Header.Set("X-Github-Hook-Id", "123")
+	ctx.Request.Header.Set("X-Github-Hook-Installation-Target-Id", "456")
+	ctx.Request.Header.Set("X-Github-Hook-Installation-Target-Type", "repository")
+
+	handler.Handle(ctx)
+
+	assert.Equal(t, fasthttp.StatusBadRequest, ctx.Response.StatusCode())
+}
+
 func newMockRequestCtx() *fasthttp.RequestCtx {
 	var ctx fasthttp.RequestCtx
 	ctx.Init(&fasthttp.Request{}, nil, nil)
