@@ -1,5 +1,3 @@
-BEGIN;
-
 -- Index for payload->>'action' (heavily used in WHERE clauses)
 -- Used in: star events, release events, workflow events, PR filtering
 CREATE INDEX IF NOT EXISTS idx_github_payload_action
@@ -74,5 +72,3 @@ CREATE INDEX IF NOT EXISTS idx_github_star_queries
 CREATE INDEX IF NOT EXISTS idx_github_release_queries
     ON cauldron.github (event, (payload->>'action'), (payload->'repository'->>'name'))
     WHERE event = 'release';
-
-COMMIT;

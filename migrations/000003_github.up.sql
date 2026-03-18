@@ -1,5 +1,3 @@
-BEGIN;
-
 --
 -- Create "github_target_type" enum
 --
@@ -41,5 +39,3 @@ CREATE INDEX "idx_github_target_type" ON "cauldron"."github" (target_type);
 CREATE INDEX "idx_github_user_login" ON "cauldron"."github" (user_login);
 CREATE INDEX "idx_github_user_id" ON "cauldron"."github" (user_id);
 CREATE INDEX "idx_github_payload" ON "cauldron"."github" USING gin (payload);
-
-COMMIT;

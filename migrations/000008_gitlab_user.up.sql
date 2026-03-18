@@ -1,5 +1,3 @@
-BEGIN;
-
 --
 -- Create "gitlab_user" table
 --
@@ -24,5 +22,3 @@ CREATE TABLE "cauldron"."gitlab_user" (
 CREATE INDEX "idx_gitlab_user_user_username" ON "cauldron"."gitlab_user" (user_username);
 CREATE INDEX "idx_gitlab_user_user_id" ON "cauldron"."gitlab_user" (user_id);
 CREATE INDEX "idx_gitlab_user_meta_data" ON "cauldron"."gitlab_user" USING gin (meta_data);
-
-COMMIT;

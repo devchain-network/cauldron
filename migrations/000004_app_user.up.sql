@@ -1,5 +1,3 @@
-BEGIN;
-
 --
 -- Create "git_provider" enum
 --
@@ -33,5 +31,3 @@ CREATE TABLE "cauldron"."app_user" (
 
 CREATE INDEX "idx_app_user_git_provider" ON "cauldron"."app_user" (git_provider);
 CREATE INDEX "idx_app_user_git_provider_user_name" ON "cauldron"."app_user" (git_provider_user_name);
-
-COMMIT;
