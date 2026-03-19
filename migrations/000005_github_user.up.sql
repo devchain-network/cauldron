@@ -1,7 +1,6 @@
 --
--- Create "app_user" table
+-- Create "github_user" table
 --
-
 CREATE TABLE "cauldron"."github_user" (
     "id" SERIAL PRIMARY KEY,
     "uid" UUID DEFAULT uuid_generate_v4(),
@@ -17,7 +16,6 @@ CREATE TABLE "cauldron"."github_user" (
 --
 -- Create indexes
 --
-
 CREATE INDEX "idx_github_user_user_login" ON "cauldron"."github_user" (user_login);
 CREATE INDEX "idx_github_user_user_id" ON "cauldron"."github_user" (user_id);
 CREATE INDEX "idx_github_user_meta_data" ON "cauldron"."github_user" USING gin (meta_data);
