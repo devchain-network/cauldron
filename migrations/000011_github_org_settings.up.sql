@@ -7,7 +7,7 @@ CREATE TABLE "cauldron"."github_org_settings" (
     "org_name" VARCHAR(40) UNIQUE NOT NULL,
     "created_at" TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'UTC'),
     "admin_user_id" BIGINT REFERENCES "cauldron"."app_user"(id),
-    "repo_mode" VARCHAR(10) DEFAULT 'all',
+    "repo_mode" VARCHAR(10) NOT NULL DEFAULT 'all' CHECK (repo_mode IN ('all', 'selected')),
     "selected_repos" JSONB NOT NULL DEFAULT '[]'::jsonb,
     "installation_id" BIGINT
 );
