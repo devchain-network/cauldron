@@ -1,5 +1,3 @@
-BEGIN;
-
 -- Drop partial composite indexes
 DROP INDEX IF EXISTS cauldron.idx_github_release_queries;
 DROP INDEX IF EXISTS cauldron.idx_github_star_queries;
@@ -18,5 +16,3 @@ DROP INDEX IF EXISTS cauldron.idx_github_payload_org_login;
 DROP INDEX IF EXISTS cauldron.idx_github_payload_repo_name;
 DROP INDEX IF EXISTS cauldron.idx_github_payload_sender_type;
 DROP INDEX IF EXISTS cauldron.idx_github_payload_action;
-
-COMMIT;

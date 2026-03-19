@@ -1,7 +1,6 @@
 --
 -- Create "gitlab" table
 --
-
 CREATE TABLE "cauldron"."gitlab" (
     "id" SERIAL PRIMARY KEY,
     "uid" UUID DEFAULT uuid_generate_v4(),
@@ -21,7 +20,6 @@ CREATE TABLE "cauldron"."gitlab" (
 --
 -- Create indexes
 --
-
 CREATE INDEX "idx_gitlab_object_kind" ON "cauldron"."gitlab" (object_kind);
 CREATE INDEX "idx_gitlab_project_id" ON "cauldron"."gitlab" (project_id) WHERE project_id IS NOT NULL;
 CREATE INDEX "idx_gitlab_project_path" ON "cauldron"."gitlab" (project_path) WHERE project_path IS NOT NULL;
