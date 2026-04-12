@@ -444,3 +444,252 @@ func TestNew_Consume_Success(t *testing.T) {
 	_ = process.Signal(os.Interrupt)
 	wg.Wait()
 }
+
+func TestNew_InvalidKeepAlive(t *testing.T) {
+	logger := mockslogger.New()
+
+	consumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessageFunc()),
+		kafkaconsumergroup.WithKafkaGroupName("github-group"),
+		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
+		kafkaconsumergroup.WithKeepAlive(-1*time.Second),
+	)
+
+	assert.ErrorIs(t, err, cerrors.ErrInvalid)
+	assert.Nil(t, consumer)
+}
+
+func TestNew_ValidKeepAlive(t *testing.T) {
+	logger := mockslogger.New()
+
+	consumerGroup := &mockConsumerGroup{}
+	consumerGroupFactory := &mockConsumerGroupFactory{}
+	consumerGroupFactory.On("CreateConsumerGroup", mock.Anything, mock.Anything, mock.Anything).
+		Return(consumerGroup, nil)
+
+	consumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessageFunc()),
+		kafkaconsumergroup.WithKafkaGroupName("github-group"),
+		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		kafkaconsumergroup.WithKeepAlive(15*time.Second),
+		kafkaconsumergroup.WithSaramaConsumerGroupFactoryFunc(consumerGroupFactory.CreateConsumerGroup),
+	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, consumer)
+}
+
+func TestNew_InvalidMetadataRefreshFreq(t *testing.T) {
+	logger := mockslogger.New()
+
+	consumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessageFunc()),
+		kafkaconsumergroup.WithKafkaGroupName("github-group"),
+		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
+		kafkaconsumergroup.WithMetadataRefreshFreq(-1*time.Second),
+	)
+
+	assert.ErrorIs(t, err, cerrors.ErrInvalid)
+	assert.Nil(t, consumer)
+}
+
+func TestNew_ZeroMetadataRefreshFreq(t *testing.T) {
+	logger := mockslogger.New()
+
+	consumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessageFunc()),
+		kafkaconsumergroup.WithKafkaGroupName("github-group"),
+		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
+		kafkaconsumergroup.WithMetadataRefreshFreq(0),
+	)
+
+	assert.ErrorIs(t, err, cerrors.ErrInvalid)
+	assert.Nil(t, consumer)
+}
+
+func TestNew_InvalidSessionTimeout(t *testing.T) {
+	logger := mockslogger.New()
+
+	consumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessageFunc()),
+		kafkaconsumergroup.WithKafkaGroupName("github-group"),
+		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
+		kafkaconsumergroup.WithSessionTimeout(-1*time.Second),
+	)
+
+	assert.ErrorIs(t, err, cerrors.ErrInvalid)
+	assert.Nil(t, consumer)
+}
+
+func TestNew_ZeroSessionTimeout(t *testing.T) {
+	logger := mockslogger.New()
+
+	consumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessageFunc()),
+		kafkaconsumergroup.WithKafkaGroupName("github-group"),
+		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
+		kafkaconsumergroup.WithSessionTimeout(0),
+	)
+
+	assert.ErrorIs(t, err, cerrors.ErrInvalid)
+	assert.Nil(t, consumer)
+}
+
+func TestNew_InvalidHeartbeatInterval(t *testing.T) {
+	logger := mockslogger.New()
+
+	consumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessageFunc()),
+		kafkaconsumergroup.WithKafkaGroupName("github-group"),
+		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
+		kafkaconsumergroup.WithHeartbeatInterval(-1*time.Second),
+	)
+
+	assert.ErrorIs(t, err, cerrors.ErrInvalid)
+	assert.Nil(t, consumer)
+}
+
+func TestNew_ZeroHeartbeatInterval(t *testing.T) {
+	logger := mockslogger.New()
+
+	consumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessageFunc()),
+		kafkaconsumergroup.WithKafkaGroupName("github-group"),
+		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
+		kafkaconsumergroup.WithHeartbeatInterval(0),
+	)
+
+	assert.ErrorIs(t, err, cerrors.ErrInvalid)
+	assert.Nil(t, consumer)
+}
+
+func TestNew_InvalidRebalanceTimeout(t *testing.T) {
+	logger := mockslogger.New()
+
+	consumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessageFunc()),
+		kafkaconsumergroup.WithKafkaGroupName("github-group"),
+		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
+		kafkaconsumergroup.WithRebalanceTimeout(-1*time.Second),
+	)
+
+	assert.ErrorIs(t, err, cerrors.ErrInvalid)
+	assert.Nil(t, consumer)
+}
+
+func TestNew_ValidMetadataRefreshFreq(t *testing.T) {
+	logger := mockslogger.New()
+
+	consumerGroup := &mockConsumerGroup{}
+	consumerGroupFactory := &mockConsumerGroupFactory{}
+	consumerGroupFactory.On("CreateConsumerGroup", mock.Anything, mock.Anything, mock.Anything).
+		Return(consumerGroup, nil)
+
+	consumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessageFunc()),
+		kafkaconsumergroup.WithKafkaGroupName("github-group"),
+		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		kafkaconsumergroup.WithMetadataRefreshFreq(2*time.Minute),
+		kafkaconsumergroup.WithSaramaConsumerGroupFactoryFunc(consumerGroupFactory.CreateConsumerGroup),
+	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, consumer)
+}
+
+func TestNew_ValidSessionTimeout(t *testing.T) {
+	logger := mockslogger.New()
+
+	consumerGroup := &mockConsumerGroup{}
+	consumerGroupFactory := &mockConsumerGroupFactory{}
+	consumerGroupFactory.On("CreateConsumerGroup", mock.Anything, mock.Anything, mock.Anything).
+		Return(consumerGroup, nil)
+
+	consumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessageFunc()),
+		kafkaconsumergroup.WithKafkaGroupName("github-group"),
+		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		kafkaconsumergroup.WithSessionTimeout(20*time.Second),
+		kafkaconsumergroup.WithSaramaConsumerGroupFactoryFunc(consumerGroupFactory.CreateConsumerGroup),
+	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, consumer)
+}
+
+func TestNew_ValidHeartbeatInterval(t *testing.T) {
+	logger := mockslogger.New()
+
+	consumerGroup := &mockConsumerGroup{}
+	consumerGroupFactory := &mockConsumerGroupFactory{}
+	consumerGroupFactory.On("CreateConsumerGroup", mock.Anything, mock.Anything, mock.Anything).
+		Return(consumerGroup, nil)
+
+	consumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessageFunc()),
+		kafkaconsumergroup.WithKafkaGroupName("github-group"),
+		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		kafkaconsumergroup.WithHeartbeatInterval(5*time.Second),
+		kafkaconsumergroup.WithSaramaConsumerGroupFactoryFunc(consumerGroupFactory.CreateConsumerGroup),
+	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, consumer)
+}
+
+func TestNew_ValidRebalanceTimeout(t *testing.T) {
+	logger := mockslogger.New()
+
+	consumerGroup := &mockConsumerGroup{}
+	consumerGroupFactory := &mockConsumerGroupFactory{}
+	consumerGroupFactory.On("CreateConsumerGroup", mock.Anything, mock.Anything, mock.Anything).
+		Return(consumerGroup, nil)
+
+	consumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessageFunc()),
+		kafkaconsumergroup.WithKafkaGroupName("github-group"),
+		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		kafkaconsumergroup.WithRebalanceTimeout(45*time.Second),
+		kafkaconsumergroup.WithSaramaConsumerGroupFactoryFunc(consumerGroupFactory.CreateConsumerGroup),
+	)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, consumer)
+}
+
+func TestNew_ZeroRebalanceTimeout(t *testing.T) {
+	logger := mockslogger.New()
+
+	consumer, err := kafkaconsumergroup.New(
+		kafkaconsumergroup.WithLogger(logger),
+		kafkaconsumergroup.WithProcessMessageFunc(mockProcessMessageFunc()),
+		kafkaconsumergroup.WithKafkaGroupName("github-group"),
+		kafkaconsumergroup.WithTopic(kafkacp.KafkaTopicIdentifierGitHub.String()),
+		kafkaconsumergroup.WithKafkaBrokers(kafkacp.DefaultKafkaBrokers),
+		kafkaconsumergroup.WithRebalanceTimeout(0),
+	)
+
+	assert.ErrorIs(t, err, cerrors.ErrInvalid)
+	assert.Nil(t, consumer)
+}
