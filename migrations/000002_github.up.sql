@@ -1,6 +1,3 @@
---
--- Create "github_target_type" enum
---
 CREATE TYPE "cauldron"."github_target_type" AS ENUM (
     'repository',
     'organization',
@@ -10,9 +7,6 @@ CREATE TYPE "cauldron"."github_target_type" AS ENUM (
     'sponsorslisting'
 );
 
---
--- Create "github" table
---
 CREATE TABLE "cauldron"."github" (
     "id" SERIAL PRIMARY KEY,
     "uid" UUID DEFAULT uuid_generate_v4(),
@@ -29,10 +23,8 @@ CREATE TABLE "cauldron"."github" (
     "payload" JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
---
--- Create indexes
---
-CREATE INDEX "idx_github_target_type" ON "cauldron"."github" (target_type);
-CREATE INDEX "idx_github_user_login" ON "cauldron"."github" (user_login);
-CREATE INDEX "idx_github_user_id" ON "cauldron"."github" (user_id);
-CREATE INDEX "idx_github_payload" ON "cauldron"."github" USING gin (payload);
+CREATE INDEX IF NOT EXISTS "idx_github_created_at" ON "cauldron"."github" (created_at);
+CREATE INDEX IF NOT EXISTS "idx_github_target_type" ON "cauldron"."github" (target_type);
+CREATE INDEX IF NOT EXISTS "idx_github_user_login" ON "cauldron"."github" (user_login);
+CREATE INDEX IF NOT EXISTS "idx_github_user_id" ON "cauldron"."github" (user_id);
+CREATE INDEX IF NOT EXISTS "idx_github_payload" ON "cauldron"."github" USING gin (payload);

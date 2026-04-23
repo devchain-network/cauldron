@@ -2,6 +2,7 @@ DROP INDEX IF EXISTS "cauldron"."idx_github_payload";
 DROP INDEX IF EXISTS "cauldron"."idx_github_user_id";
 DROP INDEX IF EXISTS "cauldron"."idx_github_user_login";
 DROP INDEX IF EXISTS "cauldron"."idx_github_target_type";
+DROP INDEX IF EXISTS "cauldron"."idx_github_created_at";
 
 DROP TABLE IF EXISTS "cauldron"."github";
 

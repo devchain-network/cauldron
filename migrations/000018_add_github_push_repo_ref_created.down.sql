@@ -1,1 +1,0 @@
-DROP INDEX IF EXISTS "cauldron"."idx_github_push_repo_ref_created";
